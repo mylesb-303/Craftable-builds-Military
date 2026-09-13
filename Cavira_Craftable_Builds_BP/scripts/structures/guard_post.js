@@ -3,16 +3,18 @@ import { toWorldLocation } from "../placement.js";
 
 const SIZE = { x: 8, y: 8, z: 8 };
 
-const BLOCKS = {
-  floor: BlockPermutation.resolve("minecraft:smooth_stone"),
-  frame: BlockPermutation.resolve("minecraft:polished_andesite"),
-  wall: BlockPermutation.resolve("minecraft:light_gray_concrete"),
-  accent: BlockPermutation.resolve("minecraft:gray_concrete"),
-  glass: BlockPermutation.resolve("minecraft:tinted_glass"),
-  light: BlockPermutation.resolve("minecraft:sea_lantern"),
-  bars: BlockPermutation.resolve("minecraft:iron_bars"),
-  air: BlockPermutation.resolve("minecraft:air")
-};
+function getBlocks() {
+  return {
+    floor: BlockPermutation.resolve("minecraft:smooth_stone"),
+    frame: BlockPermutation.resolve("minecraft:polished_andesite"),
+    wall: BlockPermutation.resolve("minecraft:light_gray_concrete"),
+    accent: BlockPermutation.resolve("minecraft:gray_concrete"),
+    glass: BlockPermutation.resolve("minecraft:tinted_glass"),
+    light: BlockPermutation.resolve("minecraft:sea_lantern"),
+    bars: BlockPermutation.resolve("minecraft:iron_bars"),
+    air: BlockPermutation.resolve("minecraft:air")
+  };
+}
 
 function setLocal(dimension, origin, rotation, x, y, z, permutation) {
   const location = toWorldLocation(
@@ -35,6 +37,10 @@ function fillLocal(dimension, origin, rotation, from, to, permutation) {
 }
 
 export function buildGuardPost(dimension, origin, rotation) {
+  // Block permutations are resolved only when the player actually confirms a build.
+  // Native BlockPermutation functions cannot be called during module early execution.
+  const BLOCKS = getBlocks();
+
   // Foundation.
   fillLocal(
     dimension,

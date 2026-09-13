@@ -11,9 +11,7 @@
       "minecraft:display_name": {
         "value": "CAVIRA Construction Tablet"
       },
-      "minecraft:icon": {
-        "texture": "construction_tablet"
-      },
+      "minecraft:icon": "construction_tablet",
       "minecraft:max_stack_size": 1
     }
   }

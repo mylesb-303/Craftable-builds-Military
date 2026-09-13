@@ -44,7 +44,7 @@ async function showCategoryMenu(player, categoryId) {
   if (structures.length === 0) {
     const form = new MessageFormData()
       .title(category.name)
-      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.1.0.")
+      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.1.1.")
       .button1("Back")
       .button2("Close");
 
