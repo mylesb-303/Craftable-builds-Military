@@ -1,0 +1,36 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "cavira_builds:construction_tablet_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "context": "AlwaysUnlocked"
+      }
+    ],
+    "pattern": [
+      "IRI",
+      "RCR",
+      "IRI"
+    ],
+    "key": {
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "R": {
+        "item": "minecraft:redstone"
+      },
+      "C": {
+        "item": "minecraft:compass"
+      }
+    },
+    "result": {
+      "item": "cavira_builds:construction_tablet",
+      "count": 1
+    }
+  }
+}
