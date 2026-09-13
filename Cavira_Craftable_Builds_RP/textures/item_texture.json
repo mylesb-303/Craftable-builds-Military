@@ -1,0 +1,9 @@
+{
+  "resource_pack_name": "CAVIRA Craftable Builds - Military",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "construction_tablet": {
+      "textures": "textures/items/construction_tablet"
+    }
+  }
+}

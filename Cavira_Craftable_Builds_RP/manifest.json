@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "CAVIRA Craftable Builds - Military RP",
+    "description": "Resources for the CAVIRA Military Infrastructure construction system.",
+    "uuid": "4baa22d4-028d-4ab8-b95d-2909a67f1469",
+    "version": [
+      0,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      40
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "6e3a47d1-c557-4d52-9418-9c2a08baf232",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}
