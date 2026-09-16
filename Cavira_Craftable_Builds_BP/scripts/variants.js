@@ -153,13 +153,13 @@ const PALETTES = {
     frame: "minecraft:polished_blackstone",
     wall: "minecraft:blackstone",
     camoA: "minecraft:basalt",
-    camoB: "minecraft:red_nether_bricks",
+    camoB: "minecraft:red_nether_brick",
     accent: "minecraft:polished_blackstone_bricks"
   },
   end: {
-    floor: "minecraft:end_stone_bricks",
+    floor: "minecraft:end_bricks",
     frame: "minecraft:purpur_block",
-    wall: "minecraft:end_stone_bricks",
+    wall: "minecraft:end_bricks",
     camoA: "minecraft:calcite",
     camoB: "minecraft:purpur_block",
     accent: "minecraft:gray_concrete"
