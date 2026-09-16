@@ -21,9 +21,47 @@ import { buildGuardPost } from "./structures/guard_post.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
+const ACTIVE_PREVIEWS = new Map();
 
 function tell(player, message) {
   player.sendMessage(`§8[§bCAVIRA§8]§r ${message}`);
+}
+
+function rotateLeft(rotation) {
+  return { north: "west", west: "south", south: "east", east: "north" }[rotation] ?? "north";
+}
+
+function rotateRight(rotation) {
+  return { north: "east", east: "south", south: "west", west: "north" }[rotation] ?? "north";
+}
+
+function clearActivePreview(player) {
+  const session = ACTIVE_PREVIEWS.get(player.id);
+  if (!session) return;
+  restorePreview(player.dimension, session.previewBlocks);
+  ACTIVE_PREVIEWS.delete(player.id);
+}
+
+function drawPreview(player, session) {
+  session.previewBlocks = showFootprintPreview(
+    player.dimension,
+    session.origin,
+    session.structure.size,
+    session.rotation
+  );
+}
+
+function repositionPreview(player, session) {
+  restorePreview(player.dimension, session.previewBlocks);
+  session.rotation = getCardinalRotation(player);
+  session.origin = getPlacementOrigin(player, session.structure.size, session.rotation);
+  drawPreview(player, session);
+}
+
+function rotatePreview(player, session, direction) {
+  restorePreview(player.dimension, session.previewBlocks);
+  session.rotation = direction === "left" ? rotateLeft(session.rotation) : rotateRight(session.rotation);
+  drawPreview(player, session);
 }
 
 async function undoLastBuild(player) {
@@ -75,7 +113,7 @@ async function showCategoryMenu(player, categoryId) {
   if (structures.length === 0) {
     const form = new MessageFormData()
       .title(category.name)
-      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.1.")
+      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.2.")
       .button1("Back")
       .button2("Close");
     const response = await form.show(player);
@@ -85,7 +123,7 @@ async function showCategoryMenu(player, categoryId) {
 
   const form = new ActionFormData()
     .title(`${category.name} Structures`)
-    .body("Select a structure. You will choose camouflage and preview its footprint next.");
+    .body("Select a structure. You will choose camouflage, then enter free-look placement preview mode.");
   for (const structure of structures) form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
   form.button("§8← Back");
 
@@ -108,10 +146,13 @@ async function showVariantMenu(player, categoryId, structureId) {
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
   if (response.selection === VARIANTS.length) return showCategoryMenu(player, categoryId);
-  await prepareStructure(player, categoryId, structureId, VARIANTS[response.selection].id);
+
+  beginFreeLookPreview(player, categoryId, structureId, VARIANTS[response.selection].id);
 }
 
-async function prepareStructure(player, categoryId, structureId, variantId) {
+function beginFreeLookPreview(player, categoryId, structureId, variantId) {
+  clearActivePreview(player);
+
   const structure = getStructure(categoryId, structureId);
   const variant = getVariant(variantId);
   if (!structure) return;
@@ -120,51 +161,96 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
   const origin = getPlacementOrigin(player, structure.size, rotation);
   const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!validation.ok) {
+    tell(player, `§cCannot preview:§r ${validation.reason}`);
+    return;
+  }
+
+  const session = {
+    categoryId,
+    structureId,
+    variantId,
+    structure,
+    variant,
+    origin,
+    rotation,
+    previewBlocks: []
+  };
+  drawPreview(player, session);
+  ACTIVE_PREVIEWS.set(player.id, session);
+
+  tell(player, `§aPreview active: ${structure.name} (${variant.name}). §rFly or walk around freely to inspect it. Use the Construction Tablet again for placement controls.`);
+}
+
+async function showPreviewControls(player) {
+  const session = ACTIVE_PREVIEWS.get(player.id);
+  if (!session) return showMainMenu(player);
+
+  const form = new ActionFormData()
+    .title(`Preview: ${session.structure.name}`)
+    .body(
+      `Finish: ${session.variant.name}\n` +
+      `Facing: ${session.rotation.toUpperCase()}\n` +
+      `Size: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\n\n` +
+      "The green 3D outline stays in the world while you inspect the site. Yellow marks the front-door centre."
+    )
+    .button("§aConstruct Here")
+    .button("§bReposition In Front Of Me")
+    .button("§e↶ Rotate Left")
+    .button("§e↷ Rotate Right")
+    .button("§cCancel Preview");
+
+  const response = await form.show(player);
+  if (response.canceled || response.selection === undefined) return;
+
+  if (response.selection === 0) {
+    await constructPreview(player, session);
+    return;
+  }
+  if (response.selection === 1) {
+    repositionPreview(player, session);
+    tell(player, "§aPreview repositioned in front of you. Inspect it again, then use the tablet when ready.");
+    return;
+  }
+  if (response.selection === 2) {
+    rotatePreview(player, session, "left");
+    tell(player, "§aPreview rotated left. Inspect it again, then use the tablet when ready.");
+    return;
+  }
+  if (response.selection === 3) {
+    rotatePreview(player, session, "right");
+    tell(player, "§aPreview rotated right. Inspect it again, then use the tablet when ready.");
+    return;
+  }
+
+  clearActivePreview(player);
+  tell(player, "§7Placement preview cancelled and the original blocks restored.");
+}
+
+async function constructPreview(player, session) {
+  const validation = validatePlacement(player.dimension, session.origin, session.structure.size, session.rotation);
+  if (!validation.ok) {
     tell(player, `§cCannot build:§r ${validation.reason}`);
     return;
   }
 
-  const preview = showFootprintPreview(player.dimension, origin, structure.size, rotation);
-  let response;
-  try {
-    const form = new MessageFormData()
-      .title(`Preview: ${structure.name}`)
-      .body(
-        `${structure.description}\n\n` +
-        `Finish: ${variant.name}\n` +
-        `Footprint: ${structure.size.x}×${structure.size.z}\n\n` +
-        "§aGreen outline§r = build volume\n" +
-        "§eYellow blocks§r = front-door centre\n\n" +
-        "The structure will deploy a few blocks in front of you. Existing blocks inside the build volume will be replaced, and floating placement is allowed."
-      )
-      .button1("Construct")
-      .button2("Cancel");
-    response = await form.show(player);
-  } finally {
-    restorePreview(player.dimension, preview);
-  }
+  restorePreview(player.dimension, session.previewBlocks);
+  ACTIVE_PREVIEWS.delete(player.id);
 
-  if (!response || response.canceled || response.selection !== 0) return;
-
-  const finalValidation = validatePlacement(player.dimension, origin, structure.size, rotation);
-  if (!finalValidation.ok) {
-    tell(player, `§cPlacement changed:§r ${finalValidation.reason}`);
-    return;
-  }
-
-  const snapshot = captureVolume(player.dimension, origin, structure.size, rotation);
+  const snapshot = captureVolume(player.dimension, session.origin, session.structure.size, session.rotation);
 
   try {
-    clearVolume(player.dimension, origin, structure.size, rotation);
-    if (structure.id === "guard_post") buildGuardPost(player.dimension, origin, rotation, variantId);
+    clearVolume(player.dimension, session.origin, session.structure.size, session.rotation);
+    if (session.structure.id === "guard_post") {
+      buildGuardPost(player.dimension, session.origin, session.rotation, session.variantId);
+    }
 
     LAST_BUILDS.set(player.id, {
       snapshot,
-      structureName: structure.name,
-      variantName: variant.name
+      structureName: session.structure.name,
+      variantName: session.variant.name
     });
 
-    tell(player, `§a${structure.name} deployed in ${variant.name}. §7Use the tablet to undo it if needed.`);
+    tell(player, `§a${session.structure.name} deployed in ${session.variant.name}. §7Use the tablet to undo it if needed.`);
   } catch (error) {
     restoreVolume(snapshot);
     console.warn(`[CAVIRA] Construction error: ${error}`);
@@ -176,7 +262,8 @@ world.afterEvents.itemUse.subscribe((event) => {
   if (event.itemStack?.typeId !== TABLET_ID) return;
   const player = event.source;
   system.run(() => {
-    showMainMenu(player).catch((error) => {
+    const task = ACTIVE_PREVIEWS.has(player.id) ? showPreviewControls(player) : showMainMenu(player);
+    task.catch((error) => {
       console.warn(`[CAVIRA] Construction UI error: ${error}`);
       tell(player, "§cThe Construction Tablet encountered an error. Check the content log.");
     });
