@@ -14,9 +14,7 @@ export const VARIANTS = [
   { id: "mountain", name: "Mountain / Stone", description: "Rock and highland camouflage." },
   { id: "cherry", name: "Cherry Grove", description: "Pale stone with muted cherry accents." },
   { id: "coastal", name: "Coastal / Ocean", description: "Dark teal and stone coastal camouflage." },
-  { id: "deep_dark", name: "Deep Dark", description: "Deepslate low-light camouflage." },
-  { id: "nether", name: "Nether", description: "Blackstone, basalt and dark red camouflage." },
-  { id: "end", name: "End", description: "End-stone and muted purpur camouflage." }
+  { id: "deep_dark", name: "Deep Dark", description: "Deepslate low-light camouflage." }
 ];
 
 const PALETTES = {
@@ -147,22 +145,6 @@ const PALETTES = {
     camoA: "minecraft:deepslate_bricks",
     camoB: "minecraft:cyan_terracotta",
     accent: "minecraft:polished_blackstone"
-  },
-  nether: {
-    floor: "minecraft:polished_blackstone_bricks",
-    frame: "minecraft:polished_blackstone",
-    wall: "minecraft:blackstone",
-    camoA: "minecraft:basalt",
-    camoB: "minecraft:red_nether_brick",
-    accent: "minecraft:polished_blackstone_bricks"
-  },
-  end: {
-    floor: "minecraft:end_bricks",
-    frame: "minecraft:purpur_block",
-    wall: "minecraft:end_bricks",
-    camoA: "minecraft:calcite",
-    camoB: "minecraft:purpur_block",
-    accent: "minecraft:gray_concrete"
   }
 };
 
