@@ -1,3 +1,5 @@
+import { BlockPermutation } from "@minecraft/server";
+
 const REPLACEABLE_BLOCKS = new Set([
   "minecraft:air",
   "minecraft:short_grass",
@@ -36,14 +38,6 @@ export function getCardinalRotation(player) {
   return "east";
 }
 
-export function getPlacementOrigin(player) {
-  const hit = player.getBlockFromViewDirection({ maxDistance: 12 });
-  if (!hit?.block) return undefined;
-
-  const { x, y, z } = hit.block.location;
-  return { x, y: y + 1, z };
-}
-
 export function rotateXZ(x, z, sizeX, sizeZ, rotation) {
   switch (rotation) {
     case "west":
@@ -58,7 +52,7 @@ export function rotateXZ(x, z, sizeX, sizeZ, rotation) {
   }
 }
 
-function worldLocation(origin, local, size, rotation) {
+export function toWorldLocation(origin, local, size, rotation) {
   const rotated = rotateXZ(local.x, local.z, size.x, size.z, rotation);
   return {
     x: origin.x + rotated.x,
@@ -67,10 +61,38 @@ function worldLocation(origin, local, size, rotation) {
   };
 }
 
+export function getPlacementOrigin(player, size, rotation) {
+  const hit = player.getBlockFromViewDirection({ maxDistance: 16 });
+  if (!hit?.block) return undefined;
+
+  // The aimed-at ground block is the front-centre threshold of the structure,
+  // rather than the local 0,0 corner. For even widths, the left centre block
+  // is used so the two-block doorway still straddles the visible centre line.
+  const anchorLocal = {
+    x: Math.floor((size.x - 1) / 2),
+    y: 0,
+    z: size.z - 1
+  };
+  const anchorOffset = rotateXZ(
+    anchorLocal.x,
+    anchorLocal.z,
+    size.x,
+    size.z,
+    rotation
+  );
+
+  const { x, y, z } = hit.block.location;
+  return {
+    x: x - anchorOffset.x,
+    y: y + 1,
+    z: z - anchorOffset.z
+  };
+}
+
 export function validatePlacement(dimension, origin, size, rotation) {
   for (let x = 0; x < size.x; x++) {
     for (let z = 0; z < size.z; z++) {
-      const supportLoc = worldLocation(
+      const supportLoc = toWorldLocation(
         origin,
         { x, y: -1, z },
         size,
@@ -86,7 +108,7 @@ export function validatePlacement(dimension, origin, size, rotation) {
       }
 
       for (let y = 0; y < size.y; y++) {
-        const loc = worldLocation(origin, { x, y, z }, size, rotation);
+        const loc = toWorldLocation(origin, { x, y, z }, size, rotation);
         const block = dimension.getBlock(loc);
 
         if (!block) {
@@ -109,6 +131,53 @@ export function validatePlacement(dimension, origin, size, rotation) {
   return { ok: true };
 }
 
-export function toWorldLocation(origin, local, size, rotation) {
-  return worldLocation(origin, local, size, rotation);
+export function showFootprintPreview(dimension, origin, size, rotation) {
+  const outline = BlockPermutation.resolve("minecraft:lime_concrete");
+  const front = BlockPermutation.resolve("minecraft:yellow_concrete");
+  const changed = [];
+
+  for (let x = 0; x < size.x; x++) {
+    for (let z = 0; z < size.z; z++) {
+      const perimeter = x === 0 || z === 0 || x === size.x - 1 || z === size.z - 1;
+      if (!perimeter) continue;
+
+      const loc = toWorldLocation(origin, { x, y: 0, z }, size, rotation);
+      const block = dimension.getBlock(loc);
+      if (!block || !REPLACEABLE_BLOCKS.has(block.typeId)) continue;
+
+      changed.push({ location: loc, permutation: block.permutation });
+      const isFrontDoor = z === size.z - 1 && (x === Math.floor((size.x - 1) / 2) || x === Math.ceil((size.x - 1) / 2));
+      block.setPermutation(isFrontDoor ? front : outline);
+    }
+  }
+
+  return changed;
+}
+
+export function restorePreview(dimension, changed) {
+  for (const entry of changed) {
+    dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
+  }
+}
+
+export function captureVolume(dimension, origin, size, rotation) {
+  const blocks = [];
+  for (let x = 0; x < size.x; x++) {
+    for (let y = 0; y < size.y; y++) {
+      for (let z = 0; z < size.z; z++) {
+        const location = toWorldLocation(origin, { x, y, z }, size, rotation);
+        const block = dimension.getBlock(location);
+        if (block) blocks.push({ location, permutation: block.permutation });
+      }
+    }
+  }
+  return { dimension, blocks };
+}
+
+export function restoreVolume(snapshot) {
+  if (!snapshot) return false;
+  for (const entry of snapshot.blocks) {
+    snapshot.dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
+  }
+  return true;
 }
