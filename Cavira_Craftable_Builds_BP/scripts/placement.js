@@ -1,163 +1,125 @@
 import { BlockPermutation } from "@minecraft/server";
 
-const REPLACEABLE_BLOCKS = new Set([
-  "minecraft:air",
-  "minecraft:short_grass",
-  "minecraft:tall_grass",
-  "minecraft:fern",
-  "minecraft:large_fern",
-  "minecraft:snow_layer",
-  "minecraft:deadbush",
-  "minecraft:vine"
-]);
-
-const UNSUPPORTED_GROUND = new Set([
-  "minecraft:air",
-  "minecraft:water",
-  "minecraft:flowing_water",
-  "minecraft:lava",
-  "minecraft:flowing_lava",
-  "minecraft:short_grass",
-  "minecraft:tall_grass",
-  "minecraft:fern",
-  "minecraft:large_fern",
-  "minecraft:snow_layer",
-  "minecraft:vine"
-]);
-
 function normalizeYaw(yaw) {
   return ((yaw % 360) + 360) % 360;
 }
 
-export function getCardinalRotation(player) {
+function getPlayerFacing(player) {
   const yaw = normalizeYaw(player.getRotation().y);
-
   if (yaw >= 315 || yaw < 45) return "south";
   if (yaw >= 45 && yaw < 135) return "west";
   if (yaw >= 135 && yaw < 225) return "north";
   return "east";
 }
 
+export function getCardinalRotation(player) {
+  const facing = getPlayerFacing(player);
+  if (facing === "south") return "north";
+  if (facing === "north") return "south";
+  if (facing === "west") return "east";
+  return "west";
+}
+
 export function rotateXZ(x, z, sizeX, sizeZ, rotation) {
   switch (rotation) {
-    case "west":
-      return { x: sizeZ - 1 - z, z: x };
-    case "north":
-      return { x: sizeX - 1 - x, z: sizeZ - 1 - z };
-    case "east":
-      return { x: z, z: sizeX - 1 - x };
+    case "west": return { x: sizeZ - 1 - z, z: x };
+    case "north": return { x: sizeX - 1 - x, z: sizeZ - 1 - z };
+    case "east": return { x: z, z: sizeX - 1 - x };
     case "south":
-    default:
-      return { x, z };
+    default: return { x, z };
   }
 }
 
 export function toWorldLocation(origin, local, size, rotation) {
   const rotated = rotateXZ(local.x, local.z, size.x, size.z, rotation);
-  return {
-    x: origin.x + rotated.x,
-    y: origin.y + local.y,
-    z: origin.z + rotated.z
-  };
+  return { x: origin.x + rotated.x, y: origin.y + local.y, z: origin.z + rotated.z };
 }
 
 export function getPlacementOrigin(player, size, rotation) {
-  const hit = player.getBlockFromViewDirection({ maxDistance: 16 });
-  if (!hit?.block) return undefined;
+  const facing = getPlayerFacing(player);
+  const forward = {
+    south: { x: 0, z: 1 }, north: { x: 0, z: -1 }, west: { x: -1, z: 0 }, east: { x: 1, z: 0 }
+  }[facing];
 
-  // The aimed-at ground block is the front-centre threshold of the structure,
-  // rather than the local 0,0 corner. For even widths, the left centre block
-  // is used so the two-block doorway still straddles the visible centre line.
-  const anchorLocal = {
-    x: Math.floor((size.x - 1) / 2),
-    y: 0,
-    z: size.z - 1
+  const gap = 3;
+  const anchorWorld = {
+    x: Math.floor(player.location.x) + forward.x * gap,
+    y: Math.floor(player.location.y),
+    z: Math.floor(player.location.z) + forward.z * gap
   };
-  const anchorOffset = rotateXZ(
-    anchorLocal.x,
-    anchorLocal.z,
-    size.x,
-    size.z,
-    rotation
-  );
 
-  const { x, y, z } = hit.block.location;
+  const anchorLocal = { x: Math.floor((size.x - 1) / 2), y: 0, z: size.z - 1 };
+  const anchorOffset = rotateXZ(anchorLocal.x, anchorLocal.z, size.x, size.z, rotation);
+
   return {
-    x: x - anchorOffset.x,
-    y: y + 1,
-    z: z - anchorOffset.z
+    x: anchorWorld.x - anchorOffset.x,
+    y: anchorWorld.y,
+    z: anchorWorld.z - anchorOffset.z
   };
 }
 
 export function validatePlacement(dimension, origin, size, rotation) {
   for (let x = 0; x < size.x; x++) {
-    for (let z = 0; z < size.z; z++) {
-      const supportLoc = toWorldLocation(
-        origin,
-        { x, y: -1, z },
-        size,
-        rotation
-      );
-      const support = dimension.getBlock(supportLoc);
-
-      if (!support || UNSUPPORTED_GROUND.has(support.typeId)) {
-        return {
-          ok: false,
-          reason: "The entire footprint needs solid, level ground."
-        };
-      }
-
-      for (let y = 0; y < size.y; y++) {
+    for (let y = 0; y < size.y; y++) {
+      for (let z = 0; z < size.z; z++) {
         const loc = toWorldLocation(origin, { x, y, z }, size, rotation);
-        const block = dimension.getBlock(loc);
-
-        if (!block) {
-          return {
-            ok: false,
-            reason: "Part of the build area is outside loaded or valid world space."
-          };
-        }
-
-        if (!REPLACEABLE_BLOCKS.has(block.typeId)) {
-          return {
-            ok: false,
-            reason: `Build area blocked by ${block.typeId.replace("minecraft:", "")} at ${loc.x}, ${loc.y}, ${loc.z}.`
-          };
+        if (!dimension.getBlock(loc)) {
+          return { ok: false, reason: "Part of the build volume is outside loaded or valid world space." };
         }
       }
     }
   }
-
   return { ok: true };
+}
+
+export function clearVolume(dimension, origin, size, rotation) {
+  const air = BlockPermutation.resolve("minecraft:air");
+  for (let x = 0; x < size.x; x++) {
+    for (let y = 0; y < size.y; y++) {
+      for (let z = 0; z < size.z; z++) {
+        const loc = toWorldLocation(origin, { x, y, z }, size, rotation);
+        dimension.getBlock(loc)?.setPermutation(air);
+      }
+    }
+  }
 }
 
 export function showFootprintPreview(dimension, origin, size, rotation) {
   const outline = BlockPermutation.resolve("minecraft:lime_concrete");
   const front = BlockPermutation.resolve("minecraft:yellow_concrete");
   const changed = [];
+  const seen = new Set();
+
+  const mark = (local, permutation) => {
+    const loc = toWorldLocation(origin, local, size, rotation);
+    const key = `${loc.x},${loc.y},${loc.z}`;
+    if (seen.has(key)) return;
+    const block = dimension.getBlock(loc);
+    if (!block) return;
+    seen.add(key);
+    changed.push({ location: loc, permutation: block.permutation });
+    block.setPermutation(permutation);
+  };
 
   for (let x = 0; x < size.x; x++) {
     for (let z = 0; z < size.z; z++) {
       const perimeter = x === 0 || z === 0 || x === size.x - 1 || z === size.z - 1;
       if (!perimeter) continue;
-
-      const loc = toWorldLocation(origin, { x, y: 0, z }, size, rotation);
-      const block = dimension.getBlock(loc);
-      if (!block || !REPLACEABLE_BLOCKS.has(block.typeId)) continue;
-
-      changed.push({ location: loc, permutation: block.permutation });
-      const isFrontDoor = z === size.z - 1 && (x === Math.floor((size.x - 1) / 2) || x === Math.ceil((size.x - 1) / 2));
-      block.setPermutation(isFrontDoor ? front : outline);
+      const isDoor = z === size.z - 1 && (x === Math.floor((size.x - 1) / 2) || x === Math.ceil((size.x - 1) / 2));
+      mark({ x, y: 0, z }, isDoor ? front : outline);
+      mark({ x, y: size.y - 1, z }, isDoor ? front : outline);
     }
+  }
+
+  for (const [x, z] of [[0,0],[size.x-1,0],[0,size.z-1],[size.x-1,size.z-1]]) {
+    for (let y = 1; y < size.y - 1; y++) mark({ x, y, z }, outline);
   }
 
   return changed;
 }
 
 export function restorePreview(dimension, changed) {
-  for (const entry of changed) {
-    dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
-  }
+  for (const entry of changed) dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
 }
 
 export function captureVolume(dimension, origin, size, rotation) {
@@ -176,8 +138,6 @@ export function captureVolume(dimension, origin, size, rotation) {
 
 export function restoreVolume(snapshot) {
   if (!snapshot) return false;
-  for (const entry of snapshot.blocks) {
-    snapshot.dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
-  }
+  for (const entry of snapshot.blocks) snapshot.dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
   return true;
 }
