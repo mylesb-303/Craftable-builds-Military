@@ -18,6 +18,9 @@ import {
 } from "./placement.js";
 import { VARIANTS, getVariant } from "./variants.js";
 import { buildGuardPost } from "./structures/guard_post.js";
+import { buildMainSecurityGate } from "./structures/main_security_gate.js";
+import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
+import { buildLargeAircraftHangar } from "./structures/large_aircraft_hangar.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -43,12 +46,7 @@ function clearActivePreview(player) {
 }
 
 function drawPreview(player, session) {
-  session.previewBlocks = showFootprintPreview(
-    player.dimension,
-    session.origin,
-    session.structure.size,
-    session.rotation
-  );
+  session.previewBlocks = showFootprintPreview(player.dimension, session.origin, session.structure.size, session.rotation);
 }
 
 function repositionPreview(player, session) {
@@ -70,16 +68,13 @@ async function undoLastBuild(player) {
     tell(player, "§7There is no build to undo in this play session.");
     return;
   }
-
   const form = new MessageFormData()
     .title("Undo Last Build?")
     .body(`Restore the area used by your last ${record.structureName} (${record.variantName}) to exactly how it was before construction?`)
     .button1("Undo Build")
     .button2("Cancel");
-
   const response = await form.show(player);
   if (response.canceled || response.selection !== 0) return;
-
   if (restoreVolume(record.snapshot)) {
     LAST_BUILDS.delete(player.id);
     tell(player, `§a${record.structureName} removed and the previous blocks restored.`);
@@ -90,18 +85,11 @@ async function showMainMenu(player) {
   const form = new ActionFormData()
     .title("CAVIRA Construction Tablet")
     .body("Select an infrastructure category, or undo your most recent construction.");
-
   for (const category of CATEGORIES) form.button(`${category.icon} §f${category.name}`);
   form.button("§c↶ Undo Last Build");
-
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-
-  if (response.selection === CATEGORIES.length) {
-    await undoLastBuild(player);
-    return;
-  }
-
+  if (response.selection === CATEGORIES.length) return undoLastBuild(player);
   await showCategoryMenu(player, CATEGORIES[response.selection].id);
 }
 
@@ -109,24 +97,21 @@ async function showCategoryMenu(player, categoryId) {
   const category = getCategory(categoryId);
   const structures = getStructures(categoryId);
   if (!category) return;
-
   if (structures.length === 0) {
     const form = new MessageFormData()
       .title(category.name)
-      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.2.")
+      .body("This pack is registered in the construction system but has no deployable structures yet.")
       .button1("Back")
       .button2("Close");
     const response = await form.show(player);
     if (!response.canceled && response.selection === 0) await showMainMenu(player);
     return;
   }
-
   const form = new ActionFormData()
     .title(`${category.name} Structures`)
     .body("Select a structure. You will choose camouflage, then enter free-look placement preview mode.");
   for (const structure of structures) form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
   form.button("§8← Back");
-
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
   if (response.selection === structures.length) return showMainMenu(player);
@@ -136,27 +121,22 @@ async function showCategoryMenu(player, categoryId) {
 async function showVariantMenu(player, categoryId, structureId) {
   const structure = getStructure(categoryId, structureId);
   if (!structure) return;
-
   const form = new ActionFormData()
     .title(`${structure.name} — Finish`)
     .body("Choose a military colour/camouflage palette. These palettes are shared by the whole construction system.");
   for (const variant of VARIANTS) form.button(`${variant.name}\n§7${variant.description}`);
   form.button("§8← Back");
-
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
   if (response.selection === VARIANTS.length) return showCategoryMenu(player, categoryId);
-
   beginFreeLookPreview(player, categoryId, structureId, VARIANTS[response.selection].id);
 }
 
 function beginFreeLookPreview(player, categoryId, structureId, variantId) {
   clearActivePreview(player);
-
   const structure = getStructure(categoryId, structureId);
   const variant = getVariant(variantId);
   if (!structure) return;
-
   const rotation = getCardinalRotation(player);
   const origin = getPlacementOrigin(player, structure.size, rotation);
   const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
@@ -164,48 +144,26 @@ function beginFreeLookPreview(player, categoryId, structureId, variantId) {
     tell(player, `§cCannot preview:§r ${validation.reason}`);
     return;
   }
-
-  const session = {
-    categoryId,
-    structureId,
-    variantId,
-    structure,
-    variant,
-    origin,
-    rotation,
-    previewBlocks: []
-  };
+  const session = { categoryId, structureId, variantId, structure, variant, origin, rotation, previewBlocks: [] };
   drawPreview(player, session);
   ACTIVE_PREVIEWS.set(player.id, session);
-
   tell(player, `§aPreview active: ${structure.name} (${variant.name}). §rFly or walk around freely to inspect it. Use the Construction Tablet again for placement controls.`);
 }
 
 async function showPreviewControls(player) {
   const session = ACTIVE_PREVIEWS.get(player.id);
   if (!session) return showMainMenu(player);
-
   const form = new ActionFormData()
     .title(`Preview: ${session.structure.name}`)
-    .body(
-      `Finish: ${session.variant.name}\n` +
-      `Facing: ${session.rotation.toUpperCase()}\n` +
-      `Size: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\n\n` +
-      "The green 3D outline stays in the world while you inspect the site. Yellow marks the front-door centre."
-    )
+    .body(`Finish: ${session.variant.name}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\n\nThe green 3D outline stays in the world while you inspect the site. Yellow marks the front-door centre.`)
     .button("§aConstruct Here")
     .button("§bReposition In Front Of Me")
     .button("§e↶ Rotate Left")
     .button("§e↷ Rotate Right")
     .button("§cCancel Preview");
-
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-
-  if (response.selection === 0) {
-    await constructPreview(player, session);
-    return;
-  }
+  if (response.selection === 0) return constructPreview(player, session);
   if (response.selection === 1) {
     repositionPreview(player, session);
     tell(player, "§aPreview repositioned in front of you. Inspect it again, then use the tablet when ready.");
@@ -221,7 +179,6 @@ async function showPreviewControls(player) {
     tell(player, "§aPreview rotated right. Inspect it again, then use the tablet when ready.");
     return;
   }
-
   clearActivePreview(player);
   tell(player, "§7Placement preview cancelled and the original blocks restored.");
 }
@@ -232,24 +189,28 @@ async function constructPreview(player, session) {
     tell(player, `§cCannot build:§r ${validation.reason}`);
     return;
   }
-
   restorePreview(player.dimension, session.previewBlocks);
   ACTIVE_PREVIEWS.delete(player.id);
-
   const snapshot = captureVolume(player.dimension, session.origin, session.structure.size, session.rotation);
-
   try {
     clearVolume(player.dimension, session.origin, session.structure.size, session.rotation);
-    if (session.structure.id === "guard_post") {
-      buildGuardPost(player.dimension, session.origin, session.rotation, session.variantId);
+    switch (session.structure.id) {
+      case "guard_post":
+        buildGuardPost(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "main_security_gate":
+        buildMainSecurityGate(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "base_headquarters":
+        buildBaseHeadquarters(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "large_aircraft_hangar":
+        buildLargeAircraftHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      default:
+        throw new Error(`No builder registered for ${session.structure.id}`);
     }
-
-    LAST_BUILDS.set(player.id, {
-      snapshot,
-      structureName: session.structure.name,
-      variantName: session.variant.name
-    });
-
+    LAST_BUILDS.set(player.id, { snapshot, structureName: session.structure.name, variantName: session.variant.name });
     tell(player, `§a${session.structure.name} deployed in ${session.variant.name}. §7Use the tablet to undo it if needed.`);
   } catch (error) {
     restoreVolume(snapshot);
