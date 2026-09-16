@@ -7,29 +7,63 @@ import {
   getStructures
 } from "./registry.js";
 import {
+  captureVolume,
   getCardinalRotation,
   getPlacementOrigin,
+  restorePreview,
+  restoreVolume,
+  showFootprintPreview,
   validatePlacement
 } from "./placement.js";
+import { VARIANTS, getVariant } from "./variants.js";
 import { buildGuardPost } from "./structures/guard_post.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
+const LAST_BUILDS = new Map();
 
 function tell(player, message) {
   player.sendMessage(`§8[§bCAVIRA§8]§r ${message}`);
 }
 
+async function undoLastBuild(player) {
+  const record = LAST_BUILDS.get(player.id);
+  if (!record) {
+    tell(player, "§7There is no build to undo in this play session.");
+    return;
+  }
+
+  const form = new MessageFormData()
+    .title("Undo Last Build?")
+    .body(`Restore the area used by your last ${record.structureName} (${record.variantName}) to exactly how it was before construction?`)
+    .button1("Undo Build")
+    .button2("Cancel");
+
+  const response = await form.show(player);
+  if (response.canceled || response.selection !== 0) return;
+
+  if (restoreVolume(record.snapshot)) {
+    LAST_BUILDS.delete(player.id);
+    tell(player, `§a${record.structureName} removed and the previous blocks restored.`);
+  }
+}
+
 async function showMainMenu(player) {
   const form = new ActionFormData()
     .title("CAVIRA Construction Tablet")
-    .body("Select an infrastructure category.");
+    .body("Select an infrastructure category, or undo your most recent construction.");
 
   for (const category of CATEGORIES) {
     form.button(`${category.icon} §f${category.name}`);
   }
+  form.button("§c↶ Undo Last Build");
 
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
+
+  if (response.selection === CATEGORIES.length) {
+    await undoLastBuild(player);
+    return;
+  }
 
   const category = CATEGORIES[response.selection];
   await showCategoryMenu(player, category.id);
@@ -44,7 +78,7 @@ async function showCategoryMenu(player, categoryId) {
   if (structures.length === 0) {
     const form = new MessageFormData()
       .title(category.name)
-      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.1.1.")
+      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.0.")
       .button1("Back")
       .button2("Close");
 
@@ -57,7 +91,7 @@ async function showCategoryMenu(player, categoryId) {
 
   const form = new ActionFormData()
     .title(`${category.name} Structures`)
-    .body("Prototype structures available in this category:");
+    .body("Select a structure. You will choose camouflage and preview its footprint next.");
 
   for (const structure of structures) {
     form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
@@ -72,63 +106,99 @@ async function showCategoryMenu(player, categoryId) {
     return;
   }
 
-  await prepareStructure(player, categoryId, structures[response.selection].id);
+  await showVariantMenu(player, categoryId, structures[response.selection].id);
 }
 
-async function prepareStructure(player, categoryId, structureId) {
+async function showVariantMenu(player, categoryId, structureId) {
   const structure = getStructure(categoryId, structureId);
   if (!structure) return;
 
-  const origin = getPlacementOrigin(player);
-  if (!origin) {
-    tell(player, "Look at the ground within 12 blocks, then use the tablet again.");
+  const form = new ActionFormData()
+    .title(`${structure.name} — Finish`)
+    .body("Choose a military colour/camouflage palette. These palettes are shared by the whole construction system.");
+
+  for (const variant of VARIANTS) {
+    form.button(`${variant.name}\n§7${variant.description}`);
+  }
+  form.button("§8← Back");
+
+  const response = await form.show(player);
+  if (response.canceled || response.selection === undefined) return;
+
+  if (response.selection === VARIANTS.length) {
+    await showCategoryMenu(player, categoryId);
     return;
   }
 
-  const rotation = getCardinalRotation(player);
-  const validation = validatePlacement(
-    player.dimension,
-    origin,
-    structure.size,
-    rotation
-  );
+  await prepareStructure(player, categoryId, structureId, VARIANTS[response.selection].id);
+}
 
+async function prepareStructure(player, categoryId, structureId, variantId) {
+  const structure = getStructure(categoryId, structureId);
+  const variant = getVariant(variantId);
+  if (!structure) return;
+
+  const rotation = getCardinalRotation(player);
+  const origin = getPlacementOrigin(player, structure.size, rotation);
+  if (!origin) {
+    tell(player, "Look at the ground within 16 blocks where you want the §efront door§r, then use the tablet again.");
+    return;
+  }
+
+  const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!validation.ok) {
     tell(player, `§cCannot build:§r ${validation.reason}`);
     return;
   }
 
-  const form = new MessageFormData()
-    .title(`Construct ${structure.name}?`)
-    .body(
-      `${structure.description}\n\n` +
-      `Location: ${origin.x}, ${origin.y}, ${origin.z}\n` +
-      `Facing: ${rotation.toUpperCase()}\n` +
-      `Footprint: ${structure.size.x}×${structure.size.z}\n\n` +
-      "The prototype places vanilla blocks only."
-    )
-    .button1("Construct")
-    .button2("Cancel");
+  const preview = showFootprintPreview(player.dimension, origin, structure.size, rotation);
+  let response;
+  try {
+    const form = new MessageFormData()
+      .title(`Preview: ${structure.name}`)
+      .body(
+        `${structure.description}\n\n` +
+        `Finish: ${variant.name}\n` +
+        `Facing: ${rotation.toUpperCase()}\n` +
+        `Footprint: ${structure.size.x}×${structure.size.z}\n\n` +
+        "§aGreen outline§r = total footprint\n" +
+        "§eYellow blocks§r = front-door centre\n\n" +
+        "The aimed-at block is the entrance anchor."
+      )
+      .button1("Construct")
+      .button2("Cancel");
 
-  const response = await form.show(player);
-  if (response.canceled || response.selection !== 0) return;
+    response = await form.show(player);
+  } finally {
+    restorePreview(player.dimension, preview);
+  }
 
-  // Re-check immediately before placement in case the area changed while the form was open.
-  const finalValidation = validatePlacement(
-    player.dimension,
-    origin,
-    structure.size,
-    rotation
-  );
+  if (!response || response.canceled || response.selection !== 0) return;
 
+  const finalValidation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!finalValidation.ok) {
     tell(player, `§cPlacement changed:§r ${finalValidation.reason}`);
     return;
   }
 
-  if (structure.id === "guard_post") {
-    buildGuardPost(player.dimension, origin, rotation);
-    tell(player, `§aGuard Post constructed facing ${rotation}.`);
+  const snapshot = captureVolume(player.dimension, origin, structure.size, rotation);
+
+  try {
+    if (structure.id === "guard_post") {
+      buildGuardPost(player.dimension, origin, rotation, variantId);
+    }
+
+    LAST_BUILDS.set(player.id, {
+      snapshot,
+      structureName: structure.name,
+      variantName: variant.name
+    });
+
+    tell(player, `§a${structure.name} constructed in ${variant.name} facing ${rotation}. §7Use the tablet to undo it if needed.`);
+  } catch (error) {
+    restoreVolume(snapshot);
+    console.warn(`[CAVIRA] Construction error: ${error}`);
+    tell(player, "§cConstruction failed and the area was restored. Check the content log.");
   }
 }
 
