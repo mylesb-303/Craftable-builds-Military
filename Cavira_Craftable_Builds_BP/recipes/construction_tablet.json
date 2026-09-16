@@ -9,7 +9,7 @@
     ],
     "unlock": [
       {
-        "context": "AlwaysUnlocked"
+        "item": "minecraft:iron_ingot"
       }
     ],
     "pattern": [
