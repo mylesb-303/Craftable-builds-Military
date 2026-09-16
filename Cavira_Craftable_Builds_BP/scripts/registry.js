@@ -15,6 +15,24 @@ export const STRUCTURES = {
       name: "Guard Post",
       description: "Compact 8×8 modern security post built entirely from vanilla blocks.",
       size: { x: 8, y: 8, z: 8 }
+    },
+    {
+      id: "main_security_gate",
+      name: "Main Security Gate",
+      description: "Twin checkpoint buildings with a protected vehicle lane and overhead security gantry.",
+      size: { x: 15, y: 7, z: 5 }
+    },
+    {
+      id: "base_headquarters",
+      name: "Base Headquarters",
+      description: "Two-storey command headquarters with reception, operations core and rooftop communications detail.",
+      size: { x: 21, y: 10, z: 17 }
+    },
+    {
+      id: "large_aircraft_hangar",
+      name: "Large Aircraft Hangar",
+      description: "Large military aircraft hangar with a 23-block-wide open door, maintenance lanes and service bays.",
+      size: { x: 31, y: 13, z: 25 }
     }
   ],
   army: [],
