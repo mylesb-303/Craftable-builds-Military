@@ -8,6 +8,7 @@ import {
 } from "./registry.js";
 import {
   captureVolume,
+  clearVolume,
   getCardinalRotation,
   getPlacementOrigin,
   restorePreview,
@@ -52,9 +53,7 @@ async function showMainMenu(player) {
     .title("CAVIRA Construction Tablet")
     .body("Select an infrastructure category, or undo your most recent construction.");
 
-  for (const category of CATEGORIES) {
-    form.button(`${category.icon} §f${category.name}`);
-  }
+  for (const category of CATEGORIES) form.button(`${category.icon} §f${category.name}`);
   form.button("§c↶ Undo Last Build");
 
   const response = await form.show(player);
@@ -65,47 +64,34 @@ async function showMainMenu(player) {
     return;
   }
 
-  const category = CATEGORIES[response.selection];
-  await showCategoryMenu(player, category.id);
+  await showCategoryMenu(player, CATEGORIES[response.selection].id);
 }
 
 async function showCategoryMenu(player, categoryId) {
   const category = getCategory(categoryId);
   const structures = getStructures(categoryId);
-
   if (!category) return;
 
   if (structures.length === 0) {
     const form = new MessageFormData()
       .title(category.name)
-      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.0.")
+      .body("This pack is registered in the construction system but has no deployable structures in prototype v0.2.1.")
       .button1("Back")
       .button2("Close");
-
     const response = await form.show(player);
-    if (!response.canceled && response.selection === 0) {
-      await showMainMenu(player);
-    }
+    if (!response.canceled && response.selection === 0) await showMainMenu(player);
     return;
   }
 
   const form = new ActionFormData()
     .title(`${category.name} Structures`)
     .body("Select a structure. You will choose camouflage and preview its footprint next.");
-
-  for (const structure of structures) {
-    form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
-  }
+  for (const structure of structures) form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
   form.button("§8← Back");
 
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-
-  if (response.selection === structures.length) {
-    await showMainMenu(player);
-    return;
-  }
-
+  if (response.selection === structures.length) return showMainMenu(player);
   await showVariantMenu(player, categoryId, structures[response.selection].id);
 }
 
@@ -116,20 +102,12 @@ async function showVariantMenu(player, categoryId, structureId) {
   const form = new ActionFormData()
     .title(`${structure.name} — Finish`)
     .body("Choose a military colour/camouflage palette. These palettes are shared by the whole construction system.");
-
-  for (const variant of VARIANTS) {
-    form.button(`${variant.name}\n§7${variant.description}`);
-  }
+  for (const variant of VARIANTS) form.button(`${variant.name}\n§7${variant.description}`);
   form.button("§8← Back");
 
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-
-  if (response.selection === VARIANTS.length) {
-    await showCategoryMenu(player, categoryId);
-    return;
-  }
-
+  if (response.selection === VARIANTS.length) return showCategoryMenu(player, categoryId);
   await prepareStructure(player, categoryId, structureId, VARIANTS[response.selection].id);
 }
 
@@ -140,11 +118,6 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
 
   const rotation = getCardinalRotation(player);
   const origin = getPlacementOrigin(player, structure.size, rotation);
-  if (!origin) {
-    tell(player, "Look at the ground within 16 blocks where you want the §efront door§r, then use the tablet again.");
-    return;
-  }
-
   const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!validation.ok) {
     tell(player, `§cCannot build:§r ${validation.reason}`);
@@ -159,15 +132,13 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
       .body(
         `${structure.description}\n\n` +
         `Finish: ${variant.name}\n` +
-        `Facing: ${rotation.toUpperCase()}\n` +
         `Footprint: ${structure.size.x}×${structure.size.z}\n\n` +
-        "§aGreen outline§r = total footprint\n" +
+        "§aGreen outline§r = build volume\n" +
         "§eYellow blocks§r = front-door centre\n\n" +
-        "The aimed-at block is the entrance anchor."
+        "The structure will deploy a few blocks in front of you. Existing blocks inside the build volume will be replaced, and floating placement is allowed."
       )
       .button1("Construct")
       .button2("Cancel");
-
     response = await form.show(player);
   } finally {
     restorePreview(player.dimension, preview);
@@ -184,9 +155,8 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
   const snapshot = captureVolume(player.dimension, origin, structure.size, rotation);
 
   try {
-    if (structure.id === "guard_post") {
-      buildGuardPost(player.dimension, origin, rotation, variantId);
-    }
+    clearVolume(player.dimension, origin, structure.size, rotation);
+    if (structure.id === "guard_post") buildGuardPost(player.dimension, origin, rotation, variantId);
 
     LAST_BUILDS.set(player.id, {
       snapshot,
@@ -194,7 +164,7 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
       variantName: variant.name
     });
 
-    tell(player, `§a${structure.name} constructed in ${variant.name} facing ${rotation}. §7Use the tablet to undo it if needed.`);
+    tell(player, `§a${structure.name} deployed in ${variant.name}. §7Use the tablet to undo it if needed.`);
   } catch (error) {
     restoreVolume(snapshot);
     console.warn(`[CAVIRA] Construction error: ${error}`);
@@ -204,7 +174,6 @@ async function prepareStructure(player, categoryId, structureId, variantId) {
 
 world.afterEvents.itemUse.subscribe((event) => {
   if (event.itemStack?.typeId !== TABLET_ID) return;
-
   const player = event.source;
   system.run(() => {
     showMainMenu(player).catch((error) => {
