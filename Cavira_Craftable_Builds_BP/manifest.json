@@ -4,27 +4,27 @@
     "name": "CAVIRA Craftable Builds - Military BP",
     "description": "Construction Tablet and deployable vanilla-block military infrastructure.",
     "uuid": "a35fc33e-be59-435c-a68b-e9c5ccf44926",
-    "version": [0, 4, 2],
+    "version": [0, 4, 3],
     "min_engine_version": [1, 26, 40]
   },
   "modules": [
     {
       "type": "data",
       "uuid": "ccc86ea1-7851-464e-9c76-2cbca9ea260a",
-      "version": [0, 4, 2]
+      "version": [0, 4, 3]
     },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "d1130df4-ec33-41e8-9956-fff279feaa95",
-      "version": [0, 4, 2],
+      "version": [0, 4, 3],
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
     {
       "uuid": "4baa22d4-028d-4ab8-b95d-2909a67f1469",
-      "version": [0, 4, 2]
+      "version": [0, 4, 3]
     },
     {
       "module_name": "@minecraft/server",
