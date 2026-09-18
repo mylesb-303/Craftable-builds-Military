@@ -165,7 +165,7 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
   }
 
   // Clean 2-wide landing into the upper floor.
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 3, y: 5, z: 11 }, B.floor);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 8 }, { x: 3, y: 5, z: 10 }, B.floor);
 
   // Simple rails on only the exposed side plus the upper landing.
   for (const step of stairRun) {
