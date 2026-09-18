@@ -170,13 +170,15 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
   // Compact landing joins directly into the intact second floor.
   fill(dimension, origin, rotation, { x: 1, y: 5, z: 8 }, { x: 2, y: 5, z: 10 }, B.floor);
 
-  // Rail only the exposed inside edge; the exterior wall protects the other side.
-  for (const step of stairRun) {
-    setLocal(dimension, origin, rotation, 3, step.y + 1, step.z, B.rail);
-  }
-  for (let z = 8; z <= 10; z++) {
-    setLocal(dimension, origin, rotation, 3, 6, z, B.rail);
-  }
+  // Final upper-floor repair pass: keep the stair opening only where it is
+  // functionally required and make every surrounding tile a real floor block.
+  fill(dimension, origin, rotation, { x: 3, y: 5, z: 1 }, { x: 19, y: 5, z: 15 }, B.floor);
+  fill(dimension, origin, rotation, { x: 1, y: 5, z: 1 }, { x: 2, y: 5, z: 10 }, B.floor);
+  setLocal(dimension, origin, rotation, 1, 5, 11, STAIR);
+  setLocal(dimension, origin, rotation, 2, 5, 11, STAIR);
+
+  // No iron-bar guard fence around the HQ stairwell. The user-facing upper
+  // floor remains clean and unobstructed around the wall-side staircase.
 
   // Upper-floor office banks and command office.
   for (const x of [6, 10, 14, 18]) {
