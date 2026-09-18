@@ -46,13 +46,13 @@ function clearActivePreview(player) {
 }
 
 function drawPreview(player, session) {
-  session.previewBlocks = showFootprintPreview(player.dimension, session.origin, session.structure.size, session.rotation);
+  session.previewBlocks = showFootprintPreview(player.dimension, session.origin, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1);
 }
 
 function repositionPreview(player, session) {
   restorePreview(player.dimension, session.previewBlocks);
   session.rotation = getCardinalRotation(player);
-  session.origin = getPlacementOrigin(player, session.structure.size, session.rotation);
+  session.origin = getPlacementOrigin(player, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1);
   drawPreview(player, session);
 }
 
@@ -138,7 +138,7 @@ function beginFreeLookPreview(player, categoryId, structureId, variantId) {
   const variant = getVariant(variantId);
   if (!structure) return;
   const rotation = getCardinalRotation(player);
-  const origin = getPlacementOrigin(player, structure.size, rotation);
+  const origin = getPlacementOrigin(player, structure.size, rotation, structure.foundationDepth ?? 1);
   const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!validation.ok) {
     tell(player, `§cCannot preview:§r ${validation.reason}`);
@@ -155,7 +155,7 @@ async function showPreviewControls(player) {
   if (!session) return showMainMenu(player);
   const form = new ActionFormData()
     .title(`Preview: ${session.structure.name}`)
-    .body(`Finish: ${session.variant.name}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\n\nThe green 3D outline stays in the world while you inspect the site. Yellow marks the front-door centre.`)
+    .body(`Finish: ${session.variant.name}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\nFoundation depth: ${session.structure.foundationDepth ?? 1} blocks\n\nThe green 3D outline stays in the world while you inspect the site. Yellow marks the entrance/ground reference; orange marks the below-ground foundation.`)
     .button("§aConstruct Here")
     .button("§bReposition In Front Of Me")
     .button("§e↶ Rotate Left")
