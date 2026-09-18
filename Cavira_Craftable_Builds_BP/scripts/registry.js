@@ -20,8 +20,8 @@ export const STRUCTURES = {
     {
       id: "main_security_gate",
       name: "Main Security Gate",
-      description: "Twin furnished checkpoint buildings with a protected vehicle lane, lighting and overhead security gantry.",
-      size: { x: 15, y: 8, z: 5 },
+      description: "Large twin-booth vehicle checkpoint with a 13-block driving corridor, pedestrian doors, lighting and high overhead security gantry.",
+      size: { x: 25, y: 10, z: 9 },
       foundationDepth: 2
     },
     {
