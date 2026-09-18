@@ -78,15 +78,16 @@ export function buildMainSecurityGate(dimension, origin, rotation, variantId) {
   }
 
   // Gate pillars and overhead gantry.
-  fill(dimension, origin, rotation, { x: 4, y: 2, z: 1 }, { x: 5, y: 6, z: 3 }, B.frame);
-  fill(dimension, origin, rotation, { x: 9, y: 2, z: 1 }, { x: 10, y: 6, z: 3 }, B.frame);
-  fill(dimension, origin, rotation, { x: 4, y: 6, z: 1 }, { x: 10, y: 7, z: 3 }, B.accent);
+  // Keep the supports one block wide and pull them away from the checkpoint doors,
+  // leaving a clear pedestrian strip beside each booth.
+  fill(dimension, origin, rotation, { x: 5, y: 2, z: 1 }, { x: 5, y: 6, z: 3 }, B.frame);
+  fill(dimension, origin, rotation, { x: 9, y: 2, z: 1 }, { x: 9, y: 6, z: 3 }, B.frame);
+  fill(dimension, origin, rotation, { x: 5, y: 6, z: 1 }, { x: 9, y: 7, z: 3 }, B.accent);
 
-  // Personnel access is carved AFTER the gantry supports, preventing support blocks
-  // from covering the doors or the approach path.
-  for (const x of [3, 4, 10, 11]) {
-    fill(dimension, origin, rotation, { x, y: 2, z: 2 }, { x, y: 4, z: 2 }, B.air);
-  }
+  // Carve the personnel doors and their entire lane-side approaches last.
+  // This guarantees no booth wall or gantry block can remain in front of them.
+  fill(dimension, origin, rotation, { x: 3, y: 2, z: 1 }, { x: 4, y: 4, z: 3 }, B.air);
+  fill(dimension, origin, rotation, { x: 10, y: 2, z: 1 }, { x: 11, y: 4, z: 3 }, B.air);
   placeIronDoor(dimension, origin, rotation, 3, 2, false);
   placeIronDoor(dimension, origin, rotation, 11, 2, true);
 
