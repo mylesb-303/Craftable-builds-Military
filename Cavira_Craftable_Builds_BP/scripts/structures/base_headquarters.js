@@ -96,9 +96,9 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
   fill(dimension, origin, rotation, { x: 9, y: 1, z: 14 }, { x: 11, y: 1, z: 16 }, B.frame);
   fill(dimension, origin, rotation, { x: 8, y: 5, z: 15 }, { x: 12, y: 5, z: 16 }, B.accent);
 
-  // Dedicated stairwell opening and clearance.
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 8 }, { x: 4, y: 5, z: 14 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 6, z: 8 }, { x: 4, y: 7, z: 14 }, B.air);
+  // Stair opening is kept narrow and tight against the left wall.
+  fill(dimension, origin, rotation, { x: 1, y: 5, z: 11 }, { x: 2, y: 5, z: 14 }, B.air);
+  fill(dimension, origin, rotation, { x: 1, y: 6, z: 11 }, { x: 2, y: 7, z: 14 }, B.air);
 
   // Ground-floor corridor spine.
   for (let z = 2; z <= 14; z++) {
@@ -143,9 +143,12 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
   }
 
   // Standard CAVIRA staircase rule:
-  // one vanilla stair block per block of rise, directly touching the next stair.
-  // Clear the stairwell BEFORE placing stairs so later air fills never delete treads.
-  fill(dimension, origin, rotation, { x: 2, y: 2, z: 7 }, { x: 3, y: 8, z: 14 }, B.air);
+  // one vanilla stair per block of rise, now pushed tight against the wall.
+  // Restore the upper floor first so only the true stair opening remains.
+  fill(dimension, origin, rotation, { x: 1, y: 5, z: 1 }, { x: 19, y: 5, z: 15 }, B.floor);
+
+  // Clear only the compact wall-side stairwell and its walking headroom.
+  fill(dimension, origin, rotation, { x: 1, y: 2, z: 11 }, { x: 2, y: 8, z: 14 }, B.air);
 
   const stairRun = [
     { y: 2, z: 14 },
@@ -154,9 +157,9 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     { y: 5, z: 11 }
   ];
 
-  // Build a solid wedge underneath, then cap each rise with the actual vanilla stair.
+  // Solid support underneath, with the vanilla stair as the visible tread.
   for (const step of stairRun) {
-    for (let x = 2; x <= 3; x++) {
+    for (let x = 1; x <= 2; x++) {
       for (let sy = 2; sy < step.y; sy++) {
         setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
       }
@@ -164,15 +167,15 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     }
   }
 
-  // Clean 2-wide landing into the upper floor.
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 8 }, { x: 3, y: 5, z: 10 }, B.floor);
+  // Compact landing joins directly into the intact second floor.
+  fill(dimension, origin, rotation, { x: 1, y: 5, z: 8 }, { x: 2, y: 5, z: 10 }, B.floor);
 
-  // Simple rails on only the exposed side plus the upper landing.
+  // Rail only the exposed inside edge; the exterior wall protects the other side.
   for (const step of stairRun) {
-    setLocal(dimension, origin, rotation, 1, step.y + 1, step.z, B.rail);
+    setLocal(dimension, origin, rotation, 3, step.y + 1, step.z, B.rail);
   }
-  for (let z = 9; z <= 11; z++) {
-    setLocal(dimension, origin, rotation, 1, 6, z, B.rail);
+  for (let z = 8; z <= 10; z++) {
+    setLocal(dimension, origin, rotation, 3, 6, z, B.rail);
   }
 
   // Upper-floor office banks and command office.
