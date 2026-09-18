@@ -190,7 +190,7 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
   }
 
   // Two-wide landing joins straight onto the observation terrace.
-  fill(dimension, origin, rotation, { x: 27, y: 6, z: 7 }, { x: 29, y: 6, z: 9 }, B.floor);
+  fill(dimension, origin, rotation, { x: 27, y: 6, z: 6 }, { x: 29, y: 6, z: 8 }, B.floor);
 
   // Open the terrace railing at the stair arrival point.
   setLocal(dimension, origin, rotation, 28, 7, 8, B.air);
