@@ -167,34 +167,41 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     if (x < 27) setLocal(dimension, origin, rotation, x, 7, 8, I.rail);
   }
 
-  // Complete wall-side stair run. Two consecutive vanilla stair treads per block
-  // of rise create a continuous slope while keeping the aircraft bay open.
+  // Standard CAVIRA staircase rule: one vanilla stair per block of rise.
+  // Keep it tight against the outer wall so the aircraft parking bay stays clear.
+  // Clear first, then build, so nothing can erase the finished staircase.
+  fill(dimension, origin, rotation, { x: 28, y: 2, z: 7 }, { x: 29, y: 9, z: 13 }, B.air);
+
   const stairRun = [
-    { y: 2, z: 16 }, { y: 2, z: 15 },
-    { y: 3, z: 14 }, { y: 3, z: 13 },
-    { y: 4, z: 12 }, { y: 4, z: 11 },
-    { y: 5, z: 10 }, { y: 5, z: 9 },
-    { y: 6, z: 8 },  { y: 6, z: 7 }
+    { y: 2, z: 13 },
+    { y: 3, z: 12 },
+    { y: 4, z: 11 },
+    { y: 5, z: 10 },
+    { y: 6, z: 9 }
   ];
+
   for (const step of stairRun) {
     for (let x = 28; x <= 29; x++) {
-      for (let sy = 2; sy < step.y; sy++) setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
+      for (let sy = 2; sy < step.y; sy++) {
+        setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
+      }
       setLocal(dimension, origin, rotation, x, step.y, step.z, STAIR);
     }
   }
 
-  // Small landing directly into the terrace opening.
-  fill(dimension, origin, rotation, { x: 27, y: 6, z: 6 }, { x: 29, y: 6, z: 8 }, B.floor);
+  // Two-wide landing joins straight onto the observation terrace.
+  fill(dimension, origin, rotation, { x: 27, y: 6, z: 7 }, { x: 29, y: 6, z: 9 }, B.floor);
 
-  // Clear continuous headroom above the full wall-side run.
-  fill(dimension, origin, rotation, { x: 28, y: 3, z: 15 }, { x: 29, y: 7, z: 16 }, B.air);
-  fill(dimension, origin, rotation, { x: 28, y: 4, z: 13 }, { x: 29, y: 7, z: 14 }, B.air);
-  fill(dimension, origin, rotation, { x: 28, y: 5, z: 11 }, { x: 29, y: 8, z: 12 }, B.air);
-  fill(dimension, origin, rotation, { x: 28, y: 6, z: 9 }, { x: 29, y: 8, z: 10 }, B.air);
+  // Open the terrace railing at the stair arrival point.
+  setLocal(dimension, origin, rotation, 28, 7, 8, B.air);
+  setLocal(dimension, origin, rotation, 29, 7, 8, B.air);
 
-  // Rail only the exposed bay-side edge; the wall itself protects the outside edge.
+  // Rail the aircraft-bay side only; the hangar wall protects the outer side.
   for (const step of stairRun) {
     setLocal(dimension, origin, rotation, 27, step.y + 1, step.z, I.rail);
+  }
+  for (let z = 7; z <= 9; z++) {
+    if (z !== 8) setLocal(dimension, origin, rotation, 27, 7, z, I.rail);
   }
 
   // Recessed roof lighting — flush with the curved ceiling.
