@@ -142,24 +142,30 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     setLocal(dimension, origin, rotation, 4, 2, z, I.storage);
   }
 
-  // Compact vanilla staircase: one tread per rise, no doubled steps.
+  // Complete walkable vanilla staircase. Vanilla stairs rise half a block,
+  // so each full block of elevation uses two consecutive stair treads.
   const stairRun = [
-    { y: 2, z: 14 },
-    { y: 3, z: 13 },
-    { y: 4, z: 12 },
-    { y: 5, z: 11 }
+    { y: 2, z: 14 }, { y: 2, z: 13 },
+    { y: 3, z: 12 }, { y: 3, z: 11 },
+    { y: 4, z: 10 }, { y: 4, z: 9 },
+    { y: 5, z: 8 },  { y: 5, z: 7 }
   ];
   for (const step of stairRun) {
-    for (let x = 2; x <= 4; x++) setLocal(dimension, origin, rotation, x, step.y, step.z, STAIR);
+    for (let x = 2; x <= 4; x++) {
+      // Solid support below every tread prevents floating or broken-looking stairs.
+      for (let sy = 2; sy < step.y; sy++) setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
+      setLocal(dimension, origin, rotation, x, step.y, step.z, STAIR);
+    }
   }
 
   // Upper landing ties directly into the second floor.
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 5, y: 5, z: 11 }, B.floor);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 6 }, { x: 5, y: 5, z: 8 }, B.floor);
 
-  // Clear headroom above every tread and landing.
-  fill(dimension, origin, rotation, { x: 2, y: 3, z: 13 }, { x: 4, y: 6, z: 14 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 4, z: 12 }, { x: 4, y: 7, z: 13 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 11 }, { x: 4, y: 7, z: 12 }, B.air);
+  // Clear a continuous headroom tunnel above the whole staircase.
+  fill(dimension, origin, rotation, { x: 2, y: 3, z: 13 }, { x: 4, y: 7, z: 14 }, B.air);
+  fill(dimension, origin, rotation, { x: 2, y: 4, z: 11 }, { x: 4, y: 7, z: 12 }, B.air);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 4, y: 8, z: 10 }, B.air);
+  fill(dimension, origin, rotation, { x: 2, y: 6, z: 7 }, { x: 4, y: 8, z: 8 }, B.air);
 
   // Continuous guard rails along the exposed edges.
   for (const step of stairRun) {
