@@ -97,8 +97,8 @@ export function buildMainSecurityGate(dimension, origin, rotation, variantId) {
     const roomStepX = doorX < 12 ? doorX - 1 : doorX + 1;
     fill(dimension, origin, rotation, { x: laneStepX, y: 2, z: 4 }, { x: laneStepX, y: 3, z: 4 }, B.air);
     fill(dimension, origin, rotation, { x: roomStepX, y: 2, z: 4 }, { x: roomStepX, y: 3, z: 4 }, B.air);
-    setLocal(dimension, origin, rotation, laneStepX, FLOOR_Y + 1, 4, pressurePlate);
-    setLocal(dimension, origin, rotation, roomStepX, FLOOR_Y + 1, 4, pressurePlate);
+    // Pressure plates are placed after all corridor-clearing passes below,
+    // otherwise the lane-side plate is erased by the vehicle tunnel clear.
   }
 
   // Wide 13-block vehicle corridor between the buildings (x 6..18).
@@ -127,4 +127,13 @@ export function buildMainSecurityGate(dimension, origin, rotation, variantId) {
 
   // Re-open the full driving tunnel after placing gantry supports, except the four outer corner columns.
   fill(dimension, origin, rotation, { x: 7, y: 2, z: 0 }, { x: 17, y: 7, z: 8 }, B.air);
+
+  // Place both personnel-door pressure plates LAST so neither is deleted.
+  // Doors themselves are created with open_bit:false, so they spawn closed.
+  for (const booth of booths) {
+    const laneStepX = booth.doorX < 12 ? booth.doorX + 1 : booth.doorX - 1;
+    const roomStepX = booth.doorX < 12 ? booth.doorX - 1 : booth.doorX + 1;
+    setLocal(dimension, origin, rotation, laneStepX, FLOOR_Y + 1, 4, pressurePlate);
+    setLocal(dimension, origin, rotation, roomStepX, FLOOR_Y + 1, 4, pressurePlate);
+  }
 }
