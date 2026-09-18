@@ -77,23 +77,23 @@ export function buildMainSecurityGate(dimension, origin, rotation, variantId) {
     setLocal(dimension, origin, rotation, innerX, 6, 2, B.light);
   }
 
-  // Personnel doors from the vehicle lane into both checkpoint rooms.
-  setLocal(dimension, origin, rotation, 3, 2, 2, B.air);
-  setLocal(dimension, origin, rotation, 3, 3, 2, B.air);
-  setLocal(dimension, origin, rotation, 11, 2, 2, B.air);
-  setLocal(dimension, origin, rotation, 11, 3, 2, B.air);
-  placeIronDoor(dimension, origin, rotation, 3, 2, false);
-  placeIronDoor(dimension, origin, rotation, 11, 2, true);
-
-  // Pressure plates on both sides make the doors usable without redstone wiring.
-  for (const [x, z] of [[2,2],[4,2],[10,2],[12,2]]) {
-    setLocal(dimension, origin, rotation, x, FLOOR_Y + 1, z, pressurePlate);
-  }
-
   // Gate pillars and overhead gantry.
   fill(dimension, origin, rotation, { x: 4, y: 2, z: 1 }, { x: 5, y: 6, z: 3 }, B.frame);
   fill(dimension, origin, rotation, { x: 9, y: 2, z: 1 }, { x: 10, y: 6, z: 3 }, B.frame);
   fill(dimension, origin, rotation, { x: 4, y: 6, z: 1 }, { x: 10, y: 7, z: 3 }, B.accent);
+
+  // Personnel access is carved AFTER the gantry supports, preventing support blocks
+  // from covering the doors or the approach path.
+  for (const x of [3, 4, 10, 11]) {
+    fill(dimension, origin, rotation, { x, y: 2, z: 2 }, { x, y: 4, z: 2 }, B.air);
+  }
+  placeIronDoor(dimension, origin, rotation, 3, 2, false);
+  placeIronDoor(dimension, origin, rotation, 11, 2, true);
+
+  // Clear, powered approach on both sides of each iron door.
+  for (const [x, z] of [[2,2],[4,2],[10,2],[12,2]]) {
+    setLocal(dimension, origin, rotation, x, FLOOR_Y + 1, z, pressurePlate);
+  }
 
   // Open vehicle lane markings and flush overhead illumination.
   for (const x of [6, 8]) {
