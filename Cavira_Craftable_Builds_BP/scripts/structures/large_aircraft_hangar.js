@@ -23,6 +23,35 @@ function fill(dimension, origin, rotation, from, to, permutation) {
   }
 }
 
+
+function rotateDirection(localDirection, rotation) {
+  const vectors = {
+    north: { x: 0, z: -1 },
+    south: { x: 0, z: 1 },
+    east: { x: 1, z: 0 },
+    west: { x: -1, z: 0 }
+  };
+  const v = vectors[localDirection];
+  let out = v;
+  if (rotation === "west") out = { x: -v.z, z: v.x };
+  else if (rotation === "north") out = { x: -v.x, z: -v.z };
+  else if (rotation === "east") out = { x: v.z, z: -v.x };
+
+  if (out.x === 1) return "east";
+  if (out.x === -1) return "west";
+  if (out.z === 1) return "south";
+  return "north";
+}
+
+function stairPermutation(rotation, localDirection = "north") {
+  const direction = rotateDirection(localDirection, rotation);
+  const values = { east: 0, west: 1, south: 2, north: 3 };
+  return BlockPermutation.resolve("minecraft:polished_andesite_stairs", {
+    upside_down_bit: false,
+    weirdo_direction: values[direction]
+  });
+}
+
 function roofHeight(x) {
   const dx = Math.abs(x - CENTER_X);
   const curve = Math.sqrt(Math.max(0, 1 - (dx * dx) / (ROOF_RADIUS * ROOF_RADIUS)));
@@ -34,6 +63,7 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
   const B = {};
   for (const [key, id] of Object.entries(p)) B[key] = BlockPermutation.resolve(id);
   const I = getInteriorBlocks();
+  const STAIR = stairPermutation(rotation, "north");
 
   // Integrated foundation and aircraft-rated floor.
   fill(dimension, origin, rotation, { x: 0, y: 0, z: 0 }, { x: 30, y: 0, z: 24 }, B.frame);
@@ -111,8 +141,8 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     }
   }
 
-  // Frame the control-room entrance so the intended doorway reads clearly from the hangar floor.
-  fill(dimension, origin, rotation, { x: 22, y: 2, z: 7 }, { x: 22, y: 4, z: 8 }, B.frame);
+  // Keep a completely clear two-block-high approach into the control room.
+  fill(dimension, origin, rotation, { x: 22, y: 2, z: 7 }, { x: 23, y: 4, z: 7 }, B.air);
 
   // Control-room furniture.
   fill(dimension, origin, rotation, { x: 25, y: 2, z: 3 }, { x: 28, y: 2, z: 3 }, I.counter);
@@ -128,31 +158,41 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
   // Room roof doubles as an observation terrace over the aircraft bay.
   fill(dimension, origin, rotation, { x: 23, y: 6, z: 1 }, { x: 29, y: 6, z: 8 }, B.floor);
   for (let z = 1; z <= 8; z++) {
-    setLocal(dimension, origin, rotation, 23, 7, z, I.rail);
+    // Leave a three-block opening where the staircase lands on the terrace.
+    if (z < 2 || z > 4) setLocal(dimension, origin, rotation, 23, 7, z, I.rail);
     setLocal(dimension, origin, rotation, 29, 7, z, I.rail);
   }
   for (let x = 24; x <= 28; x++) {
     setLocal(dimension, origin, rotation, x, 7, 1, I.rail);
-    if (x !== 24) setLocal(dimension, origin, rotation, x, 7, 8, I.rail);
+    setLocal(dimension, origin, rotation, x, 7, 8, I.rail);
   }
 
-  // Industrial access stair to the terrace.
-  // Wider treads and a landing make this read as a real staircase rather than floating blocks.
-  fill(dimension, origin, rotation, { x: 20, y: 2, z: 9 }, { x: 22, y: 2, z: 9 }, B.frame);
-  fill(dimension, origin, rotation, { x: 20, y: 2, z: 8 }, { x: 22, y: 2, z: 8 }, B.frame);
-  fill(dimension, origin, rotation, { x: 20, y: 3, z: 7 }, { x: 22, y: 3, z: 7 }, B.frame);
-  fill(dimension, origin, rotation, { x: 20, y: 4, z: 6 }, { x: 22, y: 4, z: 6 }, B.frame);
-  fill(dimension, origin, rotation, { x: 20, y: 5, z: 5 }, { x: 22, y: 5, z: 5 }, B.frame);
-  fill(dimension, origin, rotation, { x: 20, y: 6, z: 4 }, { x: 23, y: 6, z: 5 }, B.floor);
+  // Proper vanilla stair run to the terrace, moved left of the control-room doorway.
+  // This keeps the room entrance at x=23/z=7 completely unobstructed.
+  const stairRun = [
+    { y: 2, z: 12 }, { y: 2, z: 11 },
+    { y: 3, z: 10 }, { y: 3, z: 9 },
+    { y: 4, z: 8 }, { y: 4, z: 7 },
+    { y: 5, z: 6 }, { y: 5, z: 5 },
+    { y: 6, z: 4 }, { y: 6, z: 3 }
+  ];
+  for (const step of stairRun) {
+    for (let x = 19; x <= 21; x++) setLocal(dimension, origin, rotation, x, step.y, step.z, STAIR);
+  }
 
-  // Keep the route clear and rail both sides.
-  fill(dimension, origin, rotation, { x: 20, y: 3, z: 8 }, { x: 22, y: 4, z: 9 }, B.air);
-  fill(dimension, origin, rotation, { x: 20, y: 4, z: 7 }, { x: 22, y: 5, z: 7 }, B.air);
-  fill(dimension, origin, rotation, { x: 20, y: 5, z: 6 }, { x: 22, y: 6, z: 6 }, B.air);
+  // Landing bridge into the terrace opening.
+  fill(dimension, origin, rotation, { x: 21, y: 6, z: 2 }, { x: 24, y: 6, z: 4 }, B.floor);
 
-  for (const [y, z] of [[2,9],[2,8],[3,7],[4,6],[5,5]]) {
-    setLocal(dimension, origin, rotation, 19, y, z, I.rail);
-    setLocal(dimension, origin, rotation, 23, y, z, I.rail);
+  // Clear headroom over the whole run.
+  fill(dimension, origin, rotation, { x: 19, y: 3, z: 11 }, { x: 21, y: 7, z: 12 }, B.air);
+  fill(dimension, origin, rotation, { x: 19, y: 4, z: 9 }, { x: 21, y: 7, z: 10 }, B.air);
+  fill(dimension, origin, rotation, { x: 19, y: 5, z: 7 }, { x: 21, y: 7, z: 8 }, B.air);
+  fill(dimension, origin, rotation, { x: 19, y: 6, z: 5 }, { x: 21, y: 8, z: 6 }, B.air);
+
+  // Rails follow the stairs without closing the terrace entrance.
+  for (const step of stairRun) {
+    setLocal(dimension, origin, rotation, 18, step.y + 1, step.z, I.rail);
+    setLocal(dimension, origin, rotation, 22, step.y + 1, step.z, I.rail);
   }
 
   // Recessed roof lighting — flush with the curved ceiling.
