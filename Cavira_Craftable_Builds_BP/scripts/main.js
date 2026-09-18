@@ -21,6 +21,14 @@ import { buildGuardPost } from "./structures/guard_post.js";
 import { buildMainSecurityGate } from "./structures/main_security_gate.js";
 import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
 import { buildLargeAircraftHangar } from "./structures/large_aircraft_hangar.js";
+import { buildAirTrafficControlTower } from "./structures/air_traffic_control_tower.js";
+import {
+  buildRunwayStraight,
+  buildRunwayThreshold,
+  buildTaxiwayStraight,
+  buildTaxiwayCorner,
+  buildAircraftApron
+} from "./structures/runway_modules.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -206,6 +214,24 @@ async function constructPreview(player, session) {
         break;
       case "large_aircraft_hangar":
         buildLargeAircraftHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "air_traffic_control_tower":
+        buildAirTrafficControlTower(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "runway_threshold":
+        buildRunwayThreshold(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "runway_straight":
+        buildRunwayStraight(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "taxiway_straight":
+        buildTaxiwayStraight(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "taxiway_corner":
+        buildTaxiwayCorner(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "aircraft_apron":
+        buildAircraftApron(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       default:
         throw new Error(`No builder registered for ${session.structure.id}`);
