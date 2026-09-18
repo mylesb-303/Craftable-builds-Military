@@ -61,6 +61,11 @@ export function buildGuardPost(dimension, origin, rotation, variantId = "standar
     }
   }
 
+  // Defined two-wide entrance threshold and canopy.
+  fillLocal(dimension, origin, rotation, { x: 3, y: 1, z: 6 }, { x: 4, y: 1, z: 7 }, B.frame);
+  fillLocal(dimension, origin, rotation, { x: 2, y: 5, z: 6 }, { x: 5, y: 5, z: 7 }, B.accent);
+  fillLocal(dimension, origin, rotation, { x: 3, y: 2, z: 6 }, { x: 4, y: 4, z: 7 }, B.air);
+
   fillLocal(dimension, origin, rotation, { x: 0, y: 6, z: 0 }, { x: 7, y: 6, z: 7 }, B.accent);
   fillLocal(dimension, origin, rotation, { x: 3, y: 7, z: 3 }, { x: 4, y: 7, z: 4 }, B.frame);
   setLocal(dimension, origin, rotation, 3, 8, 3, B.bars);
