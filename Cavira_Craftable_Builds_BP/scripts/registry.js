@@ -40,11 +40,55 @@ export const STRUCTURES = {
     }
   ],
   army: [],
-  air_force: [],
+  air_force: [
+    {
+      id: "air_traffic_control_tower",
+      name: "Air Traffic Control Tower",
+      description: "Tall airbase control tower with reinforced operations block, glazed control cab, consoles, radar roof and integrated lighting.",
+      size: { x: 13, y: 24, z: 13 },
+      foundationDepth: 2
+    }
+  ],
   navy: [],
   strategic: [],
   logistics: [],
-  modular: []
+  modular: [
+    {
+      id: "runway_threshold",
+      name: "Runway Threshold",
+      description: "Wide illuminated runway threshold module with edge lighting, centreline and threshold bars.",
+      size: { x: 21, y: 3, z: 21 },
+      foundationDepth: 1
+    },
+    {
+      id: "runway_straight",
+      name: "Runway Straight",
+      description: "Forty-one-block runway extension with centreline and edge lighting.",
+      size: { x: 21, y: 3, z: 41 },
+      foundationDepth: 1
+    },
+    {
+      id: "taxiway_straight",
+      name: "Taxiway Straight",
+      description: "Illuminated taxiway module with continuous yellow centreline.",
+      size: { x: 13, y: 3, z: 31 },
+      foundationDepth: 1
+    },
+    {
+      id: "taxiway_corner",
+      name: "Taxiway Corner",
+      description: "Ninety-degree taxiway corner for modular airfield routing.",
+      size: { x: 21, y: 3, z: 21 },
+      foundationDepth: 1
+    },
+    {
+      id: "aircraft_apron",
+      name: "Aircraft Parking Apron",
+      description: "Large illuminated aircraft apron with three parking guide lanes.",
+      size: { x: 31, y: 3, z: 31 },
+      foundationDepth: 1
+    }
+  ]
 };
 
 export function getCategory(categoryId) {
