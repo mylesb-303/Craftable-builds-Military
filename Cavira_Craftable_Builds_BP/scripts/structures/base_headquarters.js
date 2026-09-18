@@ -62,6 +62,11 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
   fill(dimension, origin, rotation, { x: 1, y: 5, z: 1 }, { x: 19, y: 5, z: 15 }, B.floor);
   fill(dimension, origin, rotation, { x: 0, y: 9, z: 0 }, { x: 20, y: 9, z: 16 }, B.accent);
 
+  // Main entrance: clear three-block portal, recessed threshold and a defined internal lobby.
+  fill(dimension, origin, rotation, { x: 9, y: 2, z: 15 }, { x: 11, y: 4, z: 16 }, B.air);
+  fill(dimension, origin, rotation, { x: 9, y: 1, z: 14 }, { x: 11, y: 1, z: 16 }, B.frame);
+  fill(dimension, origin, rotation, { x: 8, y: 5, z: 15 }, { x: 12, y: 5, z: 16 }, B.accent);
+
   // Dedicated stairwell opening and clearance.
   fill(dimension, origin, rotation, { x: 2, y: 5, z: 10 }, { x: 4, y: 5, z: 14 }, B.air);
   fill(dimension, origin, rotation, { x: 2, y: 6, z: 10 }, { x: 4, y: 7, z: 14 }, B.air);
@@ -108,16 +113,26 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     setLocal(dimension, origin, rotation, 4, 2, z, I.storage);
   }
 
-  // Internal staircase to the upper floor.
-  fill(dimension, origin, rotation, { x: 2, y: 2, z: 13 }, { x: 3, y: 2, z: 13 }, B.step);
-  fill(dimension, origin, rotation, { x: 2, y: 3, z: 12 }, { x: 3, y: 3, z: 12 }, B.step);
-  fill(dimension, origin, rotation, { x: 2, y: 4, z: 11 }, { x: 3, y: 4, z: 11 }, B.step);
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 10 }, { x: 3, y: 5, z: 10 }, B.step);
-  for (const y of [2, 3, 4, 5]) {
-    const z = 13 - (y - 2);
+  // Proper internal staircase: three blocks wide, with a bottom landing,
+  // a continuous rise and a generous upper landing.
+  fill(dimension, origin, rotation, { x: 2, y: 2, z: 14 }, { x: 4, y: 2, z: 14 }, B.step);
+  fill(dimension, origin, rotation, { x: 2, y: 2, z: 13 }, { x: 4, y: 2, z: 13 }, B.step);
+  fill(dimension, origin, rotation, { x: 2, y: 3, z: 12 }, { x: 4, y: 3, z: 12 }, B.step);
+  fill(dimension, origin, rotation, { x: 2, y: 4, z: 11 }, { x: 4, y: 4, z: 11 }, B.step);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 10 }, { x: 4, y: 5, z: 10 }, B.step);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 5, y: 5, z: 10 }, B.step);
+
+  // Clear headroom above every tread.
+  fill(dimension, origin, rotation, { x: 2, y: 3, z: 13 }, { x: 4, y: 4, z: 14 }, B.air);
+  fill(dimension, origin, rotation, { x: 2, y: 4, z: 12 }, { x: 4, y: 5, z: 12 }, B.air);
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 11 }, { x: 4, y: 6, z: 11 }, B.air);
+
+  // Continuous guard rails on the exposed side and around the upper landing.
+  for (const [y, z] of [[2,14],[2,13],[3,12],[4,11],[5,10]]) {
     setLocal(dimension, origin, rotation, 1, y, z, B.rail);
-    setLocal(dimension, origin, rotation, 4, y, z, B.rail);
+    setLocal(dimension, origin, rotation, 5, y, z, B.rail);
   }
+  for (let z = 9; z <= 10; z++) setLocal(dimension, origin, rotation, 6, 6, z, B.rail);
 
   // Upper-floor office banks and command office.
   for (const x of [6, 10, 14, 18]) {
