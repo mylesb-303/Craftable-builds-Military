@@ -1,13 +1,14 @@
 import { BlockPermutation } from "@minecraft/server";
 import { toWorldLocation } from "../placement.js";
 import { getPalette } from "../variants.js";
+import { getInteriorBlocks } from "../interior_blocks.js";
 
 const SIZE = { x: 31, y: 18, z: 25 };
 const FLOOR_Y = 1;
 const CENTER_X = 15;
 const ROOF_RADIUS = 15;
-const WALL_TOP = 9;
-const ROOF_RISE = 7;
+const WALL_TOP = 10;
+const ROOF_RISE = 6;
 
 function setLocal(dimension, origin, rotation, x, y, z, permutation) {
   const loc = toWorldLocation(origin, { x, y, z }, SIZE, rotation);
@@ -32,11 +33,7 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
   const p = getPalette(variantId);
   const B = {};
   for (const [key, id] of Object.entries(p)) B[key] = BlockPermutation.resolve(id);
-  B.desk = BlockPermutation.resolve("minecraft:smooth_stone");
-  B.monitor = BlockPermutation.resolve("minecraft:black_concrete");
-  B.barrel = BlockPermutation.resolve("minecraft:barrel");
-  B.workbench = BlockPermutation.resolve("minecraft:crafting_table");
-  B.tool = BlockPermutation.resolve("minecraft:iron_block");
+  const I = getInteriorBlocks();
 
   // Integrated foundation and aircraft-rated floor.
   fill(dimension, origin, rotation, { x: 0, y: 0, z: 0 }, { x: 30, y: 0, z: 24 }, B.frame);
@@ -59,19 +56,27 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     }
   }
 
-  // Curved roof shell. The front remains completely unobstructed below the arch.
+  // Curved roof shell connected cleanly into side and rear walls.
   for (let x = 0; x <= 30; x++) {
     const y = roofHeight(x);
     for (let z = 0; z <= 24; z++) {
       setLocal(dimension, origin, rotation, x, y, z, x === 0 || x === 30 ? B.frame : B.accent);
     }
-    // Second layer at the crown/shoulders for a heavier military roof profile.
-    if (x >= 3 && x <= 27) {
-      for (let z = 1; z <= 23; z++) setLocal(dimension, origin, rotation, x, y + 1, z, B.camoB);
+    if (x >= 1 && x <= 29) {
+      for (let z = 0; z <= 24; z++) setLocal(dimension, origin, rotation, x, y + 1, z, B.camoB);
     }
+    for (let fillY = WALL_TOP + 1; fillY < y; fillY++) {
+      setLocal(dimension, origin, rotation, x, fillY, 0, x % 5 === 0 ? B.frame : B.wall);
+    }
+    setLocal(dimension, origin, rotation, x, y, 24, x === 0 || x === 30 ? B.frame : B.accent);
+    if (x >= 1 && x <= 29) setLocal(dimension, origin, rotation, x, y + 1, 24, B.camoB);
+  }
+  for (let z = 0; z <= 24; z++) {
+    setLocal(dimension, origin, rotation, 0, WALL_TOP + 1, z, B.frame);
+    setLocal(dimension, origin, rotation, 30, WALL_TOP + 1, z, B.frame);
   }
 
-  // Front-edge side jambs only — no columns across the aircraft opening.
+  // Front-edge side jambs only — the aircraft opening stays completely clear.
   fill(dimension, origin, rotation, { x: 0, y: 2, z: 24 }, { x: 0, y: WALL_TOP, z: 24 }, B.frame);
   fill(dimension, origin, rotation, { x: 30, y: 2, z: 24 }, { x: 30, y: WALL_TOP, z: 24 }, B.frame);
 
@@ -84,32 +89,69 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     }
   }
 
-  // Rear left workshop.
-  fill(dimension, origin, rotation, { x: 2, y: 2, z: 2 }, { x: 6, y: 2, z: 4 }, B.desk);
-  for (const z of [2,4,6]) {
-    setLocal(dimension, origin, rotation, 2, 2, z, B.workbench);
-    setLocal(dimension, origin, rotation, 4, 2, z, B.barrel);
-    setLocal(dimension, origin, rotation, 6, 2, z, B.tool);
+  // Rear-left maintenance zone: equipment is pushed against the wall, keeping aircraft space clear.
+  for (const z of [2, 4, 6, 8]) {
+    setLocal(dimension, origin, rotation, 2, 2, z, I.workbench);
+    setLocal(dimension, origin, rotation, 3, 2, z, I.storage);
+    setLocal(dimension, origin, rotation, 4, 2, z, z % 4 === 0 ? I.machine : I.equipment);
+  }
+  fill(dimension, origin, rotation, { x: 5, y: 2, z: 2 }, { x: 7, y: 2, z: 2 }, I.counter);
+  setLocal(dimension, origin, rotation, 6, 3, 2, I.keyboard);
+  setLocal(dimension, origin, rotation, 6, 3, 1, I.monitor);
+
+  // Rear-right enclosed maintenance/control room.
+  fill(dimension, origin, rotation, { x: 23, y: 2, z: 1 }, { x: 29, y: 5, z: 1 }, B.wall);
+  fill(dimension, origin, rotation, { x: 29, y: 2, z: 1 }, { x: 29, y: 5, z: 8 }, B.wall);
+  fill(dimension, origin, rotation, { x: 23, y: 2, z: 8 }, { x: 29, y: 5, z: 8 }, B.wall);
+  for (let y = 2; y <= 5; y++) {
+    for (let z = 2; z <= 7; z++) {
+      const doorway = z === 7 && (y === 2 || y === 3);
+      const window = z >= 2 && z <= 5 && (y === 3 || y === 4);
+      setLocal(dimension, origin, rotation, 23, y, z, doorway ? B.air : window ? B.glass : B.wall);
+    }
   }
 
-  // Rear right flightline office / stores.
-  fill(dimension, origin, rotation, { x: 24, y: 2, z: 2 }, { x: 28, y: 2, z: 3 }, B.desk);
-  setLocal(dimension, origin, rotation, 25, 3, 2, B.monitor);
-  setLocal(dimension, origin, rotation, 27, 3, 2, B.monitor);
-  for (const z of [4,6]) {
-    setLocal(dimension, origin, rotation, 25, 2, z, B.barrel);
-    setLocal(dimension, origin, rotation, 28, 2, z, B.barrel);
+  // Control-room furniture.
+  fill(dimension, origin, rotation, { x: 25, y: 2, z: 3 }, { x: 28, y: 2, z: 3 }, I.counter);
+  for (const x of [25, 27]) {
+    setLocal(dimension, origin, rotation, x, 3, 3, I.keyboard);
+    setLocal(dimension, origin, rotation, x, 3, 2, I.monitor);
+  }
+  setLocal(dimension, origin, rotation, 28, 2, 6, I.filing);
+  setLocal(dimension, origin, rotation, 26, 2, 6, I.storage);
+  setLocal(dimension, origin, rotation, 24, 5, 4, B.light);
+  setLocal(dimension, origin, rotation, 28, 5, 4, B.light);
+
+  // Room roof doubles as an observation terrace over the aircraft bay.
+  fill(dimension, origin, rotation, { x: 23, y: 6, z: 1 }, { x: 29, y: 6, z: 8 }, B.floor);
+  for (let z = 1; z <= 8; z++) {
+    setLocal(dimension, origin, rotation, 23, 7, z, I.rail);
+    setLocal(dimension, origin, rotation, 29, 7, z, I.rail);
+  }
+  for (let x = 24; x <= 28; x++) {
+    setLocal(dimension, origin, rotation, x, 7, 1, I.rail);
+    if (x !== 24) setLocal(dimension, origin, rotation, x, 7, 8, I.rail);
   }
 
-  // Tool islands kept close to the side walls so the centre aircraft path stays clear.
-  for (const z of [9,14,19]) {
-    setLocal(dimension, origin, rotation, 3, 2, z, B.tool);
-    setLocal(dimension, origin, rotation, 27, 2, z, B.tool);
+  // Industrial block-step access to the terrace along the rear-right wall.
+  for (let i = 0; i < 5; i++) {
+    const y = 2 + i;
+    const z = 8 - i;
+    fill(dimension, origin, rotation, { x: 21, y, z }, { x: 22, y, z }, B.frame);
+    setLocal(dimension, origin, rotation, 20, y, z, I.rail);
   }
 
-  // Suspended lighting follows the curved roof and keeps the entire hangar usable at night.
-  for (const x of [5,10,15,20,25]) {
-    const lightY = Math.max(WALL_TOP, roofHeight(x) - 2);
-    for (const z of [5,11,17,22]) setLocal(dimension, origin, rotation, x, lightY, z, B.light);
+  // Recessed roof lighting — flush with the curved ceiling.
+  for (const x of [5, 10, 15, 20, 25]) {
+    const lightY = roofHeight(x);
+    for (const z of [5, 11, 17, 22]) setLocal(dimension, origin, rotation, x, lightY, z, B.light);
+  }
+
+  // Floor-level service lighting keeps the bay bright in Night Ops and other dark palettes.
+  for (const x of [6, 12, 18, 24]) {
+    for (const z of [6, 12, 18, 22]) {
+      if (x >= 23 && z <= 8) continue;
+      setLocal(dimension, origin, rotation, x, FLOOR_Y, z, B.light);
+    }
   }
 }
