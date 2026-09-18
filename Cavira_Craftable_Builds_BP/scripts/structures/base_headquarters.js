@@ -142,37 +142,38 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     setLocal(dimension, origin, rotation, 4, 2, z, I.storage);
   }
 
-  // Complete walkable vanilla staircase. Vanilla stairs rise half a block,
-  // so each full block of elevation uses two consecutive stair treads.
+  // Standard CAVIRA staircase rule:
+  // one vanilla stair block per block of rise, directly touching the next stair.
+  // Clear the stairwell BEFORE placing stairs so later air fills never delete treads.
+  fill(dimension, origin, rotation, { x: 2, y: 2, z: 7 }, { x: 3, y: 8, z: 14 }, B.air);
+
   const stairRun = [
-    { y: 2, z: 14 }, { y: 2, z: 13 },
-    { y: 3, z: 12 }, { y: 3, z: 11 },
-    { y: 4, z: 10 }, { y: 4, z: 9 },
-    { y: 5, z: 8 },  { y: 5, z: 7 }
+    { y: 2, z: 14 },
+    { y: 3, z: 13 },
+    { y: 4, z: 12 },
+    { y: 5, z: 11 }
   ];
+
+  // Build a solid wedge underneath, then cap each rise with the actual vanilla stair.
   for (const step of stairRun) {
-    for (let x = 2; x <= 4; x++) {
-      // Solid support below every tread prevents floating or broken-looking stairs.
-      for (let sy = 2; sy < step.y; sy++) setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
+    for (let x = 2; x <= 3; x++) {
+      for (let sy = 2; sy < step.y; sy++) {
+        setLocal(dimension, origin, rotation, x, sy, step.z, B.frame);
+      }
       setLocal(dimension, origin, rotation, x, step.y, step.z, STAIR);
     }
   }
 
-  // Upper landing ties directly into the second floor.
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 6 }, { x: 5, y: 5, z: 8 }, B.floor);
+  // Clean 2-wide landing into the upper floor.
+  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 3, y: 5, z: 11 }, B.floor);
 
-  // Clear a continuous headroom tunnel above the whole staircase.
-  fill(dimension, origin, rotation, { x: 2, y: 3, z: 13 }, { x: 4, y: 7, z: 14 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 4, z: 11 }, { x: 4, y: 7, z: 12 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 5, z: 9 }, { x: 4, y: 8, z: 10 }, B.air);
-  fill(dimension, origin, rotation, { x: 2, y: 6, z: 7 }, { x: 4, y: 8, z: 8 }, B.air);
-
-  // Continuous guard rails along the exposed edges.
+  // Simple rails on only the exposed side plus the upper landing.
   for (const step of stairRun) {
     setLocal(dimension, origin, rotation, 1, step.y + 1, step.z, B.rail);
-    setLocal(dimension, origin, rotation, 5, step.y + 1, step.z, B.rail);
   }
-  for (let z = 7; z <= 8; z++) setLocal(dimension, origin, rotation, 6, 6, z, B.rail);
+  for (let z = 9; z <= 11; z++) {
+    setLocal(dimension, origin, rotation, 1, 6, z, B.rail);
+  }
 
   // Upper-floor office banks and command office.
   for (const x of [6, 10, 14, 18]) {
