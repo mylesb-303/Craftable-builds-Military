@@ -83,7 +83,7 @@ const PALETTES = {
     accent: "minecraft:brown_terracotta"
   },
   badlands: {
-    floor: "minecraft:terracotta",
+    floor: "minecraft:hardened_clay",
     frame: "minecraft:brown_terracotta",
     wall: "minecraft:orange_terracotta",
     camoA: "minecraft:red_terracotta",
