@@ -111,6 +111,9 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     }
   }
 
+  // Frame the control-room entrance so the intended doorway reads clearly from the hangar floor.
+  fill(dimension, origin, rotation, { x: 22, y: 2, z: 7 }, { x: 22, y: 4, z: 8 }, B.frame);
+
   // Control-room furniture.
   fill(dimension, origin, rotation, { x: 25, y: 2, z: 3 }, { x: 28, y: 2, z: 3 }, I.counter);
   for (const x of [25, 27]) {
@@ -133,12 +136,23 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     if (x !== 24) setLocal(dimension, origin, rotation, x, 7, 8, I.rail);
   }
 
-  // Industrial block-step access to the terrace along the rear-right wall.
-  for (let i = 0; i < 5; i++) {
-    const y = 2 + i;
-    const z = 8 - i;
-    fill(dimension, origin, rotation, { x: 21, y, z }, { x: 22, y, z }, B.frame);
-    setLocal(dimension, origin, rotation, 20, y, z, I.rail);
+  // Industrial access stair to the terrace.
+  // Wider treads and a landing make this read as a real staircase rather than floating blocks.
+  fill(dimension, origin, rotation, { x: 20, y: 2, z: 9 }, { x: 22, y: 2, z: 9 }, B.frame);
+  fill(dimension, origin, rotation, { x: 20, y: 2, z: 8 }, { x: 22, y: 2, z: 8 }, B.frame);
+  fill(dimension, origin, rotation, { x: 20, y: 3, z: 7 }, { x: 22, y: 3, z: 7 }, B.frame);
+  fill(dimension, origin, rotation, { x: 20, y: 4, z: 6 }, { x: 22, y: 4, z: 6 }, B.frame);
+  fill(dimension, origin, rotation, { x: 20, y: 5, z: 5 }, { x: 22, y: 5, z: 5 }, B.frame);
+  fill(dimension, origin, rotation, { x: 20, y: 6, z: 4 }, { x: 23, y: 6, z: 5 }, B.floor);
+
+  // Keep the route clear and rail both sides.
+  fill(dimension, origin, rotation, { x: 20, y: 3, z: 8 }, { x: 22, y: 4, z: 9 }, B.air);
+  fill(dimension, origin, rotation, { x: 20, y: 4, z: 7 }, { x: 22, y: 5, z: 7 }, B.air);
+  fill(dimension, origin, rotation, { x: 20, y: 5, z: 6 }, { x: 22, y: 6, z: 6 }, B.air);
+
+  for (const [y, z] of [[2,9],[2,8],[3,7],[4,6],[5,5]]) {
+    setLocal(dimension, origin, rotation, 19, y, z, I.rail);
+    setLocal(dimension, origin, rotation, 23, y, z, I.rail);
   }
 
   // Recessed roof lighting — flush with the curved ceiling.
