@@ -42,10 +42,10 @@ export const STRUCTURES = {
   army: [],
   air_force: [
     {
-      id: "air_traffic_control_tower",
-      name: "Air Traffic Control Tower",
-      description: "Tall airbase control tower with reinforced operations block, glazed control cab, consoles, radar roof and integrated lighting.",
-      size: { x: 13, y: 24, z: 13 },
+      id: "watch_tower",
+      name: "Airbase Watch Tower",
+      description: "Sixty-two-block-tall layered airbase watch tower based on the reference build, with ladder shaft, observation cab, stepped roof and beacon.",
+      size: { x: 23, y: 64, z: 23 },
       foundationDepth: 2
     }
   ],
