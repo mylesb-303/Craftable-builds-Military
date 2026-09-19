@@ -1,0 +1,55 @@
+name: Package Bedrock Add-On
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/initial-construction-system
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
+          files = []
+          for root in roots:
+              files.extend(root.rglob("*.json"))
+          for path in files:
+              with path.open("r", encoding="utf-8") as handle:
+                  json.load(handle)
+              print(f"OK {path}")
+          PY
+
+      - name: Check JavaScript syntax
+        run: |
+          find Cavira_Craftable_Builds_BP/scripts -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Build mcaddon
+        run: |
+          mkdir -p dist
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          output = Path("dist/Cavira_Craftable_Builds_0.5.0.mcaddon")
+          roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
+          with ZipFile(output, "w", ZIP_DEFLATED) as archive:
+              for root in roots:
+                  for path in root.rglob("*"):
+                      if path.is_file():
+                          archive.write(path, path.as_posix())
+          print(output)
+          PY
+
+      - name: Upload test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cavira-Craftable-Builds-0.5.0
+          path: dist/Cavira_Craftable_Builds_0.5.0.mcaddon
