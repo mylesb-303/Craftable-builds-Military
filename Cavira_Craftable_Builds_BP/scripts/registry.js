@@ -46,6 +46,13 @@ export const STRUCTURES = {
       description: "Furnished military accommodation block with two bunk rooms, lockers, washrooms, a duty office and communal mess area.",
       size: { x: 25, y: 10, z: 19 },
       foundationDepth: 2
+    },
+    {
+      id: "army_armoury",
+      name: "Army Armoury",
+      description: "Reinforced military armoury with secure issue counter, equipment racks, ammunition storage, maintenance area and internal vault.",
+      size: { x: 21, y: 10, z: 17 },
+      foundationDepth: 2
     }
   ],
   air_force: [
