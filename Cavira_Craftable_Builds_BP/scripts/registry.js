@@ -39,7 +39,15 @@ export const STRUCTURES = {
       foundationDepth: 2
     }
   ],
-  army: [],
+  army: [
+    {
+      id: "army_barracks",
+      name: "Army Barracks",
+      description: "Furnished military accommodation block with two bunk rooms, lockers, washrooms, a duty office and communal mess area.",
+      size: { x: 25, y: 10, z: 19 },
+      foundationDepth: 2
+    }
+  ],
   air_force: [
     {
       id: "watch_tower",
