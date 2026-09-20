@@ -21,6 +21,7 @@ import { buildGuardPost } from "./structures/guard_post.js";
 import { buildMainSecurityGate } from "./structures/main_security_gate.js";
 import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
 import { buildLargeAircraftHangar } from "./structures/large_aircraft_hangar.js";
+import { buildArmyBarracks } from "./structures/army_barracks.js";
 import { buildWatchTower } from "./structures/watch_tower.js";
 import {
   buildRunwayStraight,
@@ -214,6 +215,9 @@ async function constructPreview(player, session) {
         break;
       case "large_aircraft_hangar":
         buildLargeAircraftHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_barracks":
+        buildArmyBarracks(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       case "watch_tower":
         buildWatchTower(player.dimension, session.origin, session.rotation, session.variantId);
