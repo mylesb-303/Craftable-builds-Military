@@ -53,6 +53,41 @@ export const STRUCTURES = {
       description: "Reinforced military armoury with secure issue counter, equipment racks, ammunition storage, maintenance area and internal vault.",
       size: { x: 21, y: 10, z: 17 },
       foundationDepth: 2
+    },
+    {
+      id: "army_vehicle_depot",
+      name: "Army Vehicle Depot",
+      description: "Large three-bay vehicle depot with open access, service pits, workshops, equipment stores and illuminated maintenance floor.",
+      size: { x: 29, y: 12, z: 23 },
+      foundationDepth: 2
+    },
+    {
+      id: "army_medical_facility",
+      name: "Army Medical Facility",
+      description: "Furnished field medical centre with reception, treatment ward, examination rooms, pharmacy stores and staff station.",
+      size: { x: 23, y: 10, z: 19 },
+      foundationDepth: 2
+    },
+    {
+      id: "army_command_bunker",
+      name: "Army Command Bunker",
+      description: "Low-profile reinforced command bunker with operations room, briefing area, communications bank and secure records room.",
+      size: { x: 21, y: 8, z: 17 },
+      foundationDepth: 3
+    },
+    {
+      id: "army_defensive_checkpoint",
+      name: "Defensive Checkpoint",
+      description: "Compact hardened checkpoint with vehicle lane, protected inspection booth, overhead barrier and defensive positions.",
+      size: { x: 19, y: 9, z: 13 },
+      foundationDepth: 2
+    },
+    {
+      id: "army_perimeter_wall",
+      name: "Perimeter Wall Module",
+      description: "Twenty-one-block modular reinforced perimeter wall with patrol ledge, lighting and protected firing positions.",
+      size: { x: 21, y: 8, z: 5 },
+      foundationDepth: 2
     }
   ],
   air_force: [
