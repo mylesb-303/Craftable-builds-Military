@@ -23,6 +23,13 @@ import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
 import { buildLargeAircraftHangar } from "./structures/large_aircraft_hangar.js";
 import { buildArmyBarracks } from "./structures/army_barracks.js";
 import { buildArmyArmoury } from "./structures/army_armoury.js";
+import {
+  buildArmyVehicleDepot,
+  buildArmyMedicalFacility,
+  buildArmyCommandBunker,
+  buildArmyDefensiveCheckpoint,
+  buildArmyPerimeterWall
+} from "./structures/army_expansion.js";
 import { buildWatchTower } from "./structures/watch_tower.js";
 import {
   buildRunwayStraight,
@@ -222,6 +229,21 @@ async function constructPreview(player, session) {
         break;
       case "army_armoury":
         buildArmyArmoury(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_vehicle_depot":
+        buildArmyVehicleDepot(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_medical_facility":
+        buildArmyMedicalFacility(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_command_bunker":
+        buildArmyCommandBunker(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_defensive_checkpoint":
+        buildArmyDefensiveCheckpoint(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "army_perimeter_wall":
+        buildArmyPerimeterWall(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       case "watch_tower":
         buildWatchTower(player.dimension, session.origin, session.rotation, session.variantId);
