@@ -61,7 +61,6 @@ export function buildArmyBarracks(dimension, origin, rotation, variantId) {
   B.seat = BlockPermutation.resolve("minecraft:polished_andesite");
   B.sink = BlockPermutation.resolve("minecraft:cauldron");
   B.shower = BlockPermutation.resolve("minecraft:light_gray_stained_glass");
-  B.notice = BlockPermutation.resolve("minecraft:oak_sign");
 
   // Integrated two-block foundation, finished ground floor and clear interior volume.
   fill(dimension, origin, rotation, { x: 0, y: 0, z: 0 }, { x: 24, y: 0, z: 18 }, B.frame);
