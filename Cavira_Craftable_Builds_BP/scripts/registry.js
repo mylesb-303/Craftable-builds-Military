@@ -43,8 +43,8 @@ export const STRUCTURES = {
     {
       id: "army_barracks",
       name: "Army Barracks",
-      description: "Furnished military accommodation block with two bunk rooms, lockers, washrooms, a duty office and communal mess area.",
-      size: { x: 25, y: 10, z: 19 },
+      description: "Long-form 32-person accommodation hall based on the reference base, with cyan privacy bays, central aisle, ablutions, duty office and kit store.",
+      size: { x: 23, y: 9, z: 41 },
       foundationDepth: 2
     },
     {
