@@ -56,6 +56,22 @@ import {
   buildTaxiwayCorner,
   buildAircraftApron
 } from "./structures/runway_modules.js";
+import {
+  buildNavalHeadquarters,
+  buildHarbourControlTower,
+  buildPierStraight,
+  buildPierCorner,
+  buildPierTJunction,
+  buildHeavyShipBerth,
+  buildSubmarineServiceBerth,
+  buildNavalFuelingPier,
+  buildDryDockSide,
+  buildDryDockGateEnd,
+  buildNuclearSubmarinePen,
+  buildDocksideLoadingCrane,
+  buildCoastalDefenceBunker,
+  buildSeawallModule
+} from "./structures/navy_expansion.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -228,7 +244,9 @@ async function constructPreview(player, session) {
   ACTIVE_PREVIEWS.delete(player.id);
   const snapshot = captureVolume(player.dimension, session.origin, session.structure.size, session.rotation);
   try {
-    clearVolume(player.dimension, session.origin, session.structure.size, session.rotation);
+    if (session.structure.placementMode !== "overlay") {
+      clearVolume(player.dimension, session.origin, session.structure.size, session.rotation);
+    }
     switch (session.structure.id) {
       case "guard_post":
         buildGuardPost(player.dimension, session.origin, session.rotation, session.variantId);
@@ -322,6 +340,63 @@ async function constructPreview(player, session) {
         break;
       case "helicopter_apron":
         buildHelicopterApron(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "naval_headquarters":
+        buildNavalHeadquarters(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "naval_operations_centre":
+        buildAirfieldOperationsBuilding(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "harbour_control_tower":
+        buildHarbourControlTower(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "sailors_barracks":
+        buildArmyBarracks(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "dockyard_logistics_warehouse":
+        buildLogisticsHall(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "ship_maintenance_workshop":
+        buildHeavyVehicleMaintenanceHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "pier_straight":
+        buildPierStraight(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "pier_corner":
+        buildPierCorner(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "pier_t_junction":
+        buildPierTJunction(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "heavy_ship_berth":
+        buildHeavyShipBerth(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "submarine_service_berth":
+        buildSubmarineServiceBerth(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "naval_fueling_pier":
+        buildNavalFuelingPier(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "dry_dock_side":
+        buildDryDockSide(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "dry_dock_gate_end":
+        buildDryDockGateEnd(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "nuclear_submarine_pen":
+        buildNuclearSubmarinePen(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "dockside_loading_crane":
+        buildDocksideLoadingCrane(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "naval_ammunition_bunker":
+        buildArmyArmoury(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "coastal_defence_bunker":
+        buildCoastalDefenceBunker(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "seawall_module":
+        buildSeawallModule(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       default:
         throw new Error(`No builder registered for ${session.structure.id}`);

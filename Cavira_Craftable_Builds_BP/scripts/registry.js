@@ -125,7 +125,103 @@ export const STRUCTURES = {
       size: { x: 23, y: 64, z: 23 }, foundationDepth: 2
     }
   ],
-  navy: [],
+  navy: [
+    {
+      id: "naval_headquarters", name: "Naval Headquarters",
+      description: "Two-zone fleet headquarters with command floor, administration offices and operational consoles.",
+      size: { x: 27, y: 12, z: 21 }, foundationDepth: 2
+    },
+    {
+      id: "naval_operations_centre", name: "Naval Operations Centre",
+      description: "Secure maritime operations, briefing and monitoring facility based on the proven airfield operations layout.",
+      size: { x: 25, y: 10, z: 19 }, foundationDepth: 2
+    },
+    {
+      id: "harbour_control_tower", name: "Harbour Control Tower",
+      description: "Tall glazed harbour-control cab with access core, navigation consoles and roof equipment.",
+      size: { x: 15, y: 26, z: 15 }, foundationDepth: 2
+    },
+    {
+      id: "sailors_barracks", name: "Sailors' Barracks",
+      description: "Thirty-two-person naval accommodation hall with privacy bays, service rooms and central aisle.",
+      size: { x: 23, y: 9, z: 41 }, foundationDepth: 2
+    },
+    {
+      id: "dockyard_logistics_warehouse", name: "Dockyard Logistics Warehouse",
+      description: "High-capacity dockside warehouse with secure racks, handling lane and inventory control.",
+      size: { x: 31, y: 12, z: 25 }, foundationDepth: 2
+    },
+    {
+      id: "ship_maintenance_workshop", name: "Ship Maintenance Workshop",
+      description: "Tall multi-bay naval engineering hall with service pits, tools and overhead crane.",
+      size: { x: 35, y: 15, z: 27 }, foundationDepth: 2
+    },
+    {
+      id: "pier_straight", name: "Pier Straight",
+      description: "Water-preserving straight pier with deep supports, navigation lighting and mooring points.",
+      size: { x: 15, y: 7, z: 31 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "pier_corner", name: "Pier Corner",
+      description: "Water-preserving ninety-degree pier corner for modular harbour routing.",
+      size: { x: 21, y: 7, z: 21 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "pier_t_junction", name: "Pier T-Junction",
+      description: "Water-preserving T-shaped pier junction joining three modular dock directions.",
+      size: { x: 31, y: 7, z: 21 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "heavy_ship_berth", name: "Heavy Ship Berth",
+      description: "Wide protected berth for large naval vessels with twin service walks and heavy fenders.",
+      size: { x: 21, y: 8, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "submarine_service_berth", name: "Submarine Service Berth",
+      description: "Narrow water-channel berth with equipment stations for submarine servicing.",
+      size: { x: 17, y: 8, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "naval_fueling_pier", name: "Naval Fueling Pier",
+      description: "Reinforced fueling pier with protected pumping stations and marked service trunk.",
+      size: { x: 17, y: 9, z: 31 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "dry_dock_side", name: "Dry-Dock Side Module",
+      description: "Repeatable hardened dry-dock wall and illuminated upper service deck.",
+      size: { x: 11, y: 12, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "dry_dock_gate_end", name: "Dry-Dock Gate & End",
+      description: "Heavy modular dry-dock closure with side piers, gate structure and service gantry.",
+      size: { x: 31, y: 12, z: 13 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "nuclear_submarine_pen", name: "Nuclear Submarine Pen",
+      description: "Large covered submarine water channel with hardened arch and protected engineering walks.",
+      size: { x: 23, y: 20, z: 45 }, foundationDepth: 3, placementMode: "overlay"
+    },
+    {
+      id: "dockside_loading_crane", name: "Dockside Loading Crane",
+      description: "Tall portal crane with working deck, trolley beam, suspended hook and warning lighting.",
+      size: { x: 15, y: 26, z: 17 }, foundationDepth: 2
+    },
+    {
+      id: "naval_ammunition_bunker", name: "Naval Ammunition Bunker",
+      description: "Reinforced naval magazine with secure issue point, storage racks, maintenance area and vault.",
+      size: { x: 21, y: 10, z: 17 }, foundationDepth: 2
+    },
+    {
+      id: "coastal_defence_bunker", name: "Coastal Defence Bunker",
+      description: "Hardened coastal observation and defence post with protected stations and command room.",
+      size: { x: 25, y: 10, z: 19 }, foundationDepth: 2
+    },
+    {
+      id: "seawall_module", name: "Seawall Module",
+      description: "Repeatable deep-founded harbour wall with service walk and navigation lights.",
+      size: { x: 21, y: 9, z: 7 }, foundationDepth: 3, placementMode: "overlay"
+    }
+  ],
   strategic: [
     {
       id: "radar_radome_facility", name: "Radar & Radome Facility",
