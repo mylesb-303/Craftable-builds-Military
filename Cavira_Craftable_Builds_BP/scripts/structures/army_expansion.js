@@ -86,7 +86,9 @@ export function buildArmyVehicleDepot(dimension, origin, rotation, variantId) {
       }
     }
   }
-  for (const x of [0, 9, 19, 28]) fill(dimension, origin, rotation, SIZE, { x, y: 2, z: 22 }, { x, y: 10, z: 22 }, B.frame);
+  // Fixed red portal columns reproduce the distinctive open-front reference depot.
+  for (const x of [0, 9, 19, 28]) fill(dimension, origin, rotation, SIZE, { x, y: 2, z: 22 }, { x, y: 10, z: 22 }, B.warning);
+  fill(dimension, origin, rotation, SIZE, { x: 0, y: 9, z: 21 }, { x: 28, y: 10, z: 22 }, B.warning);
   fill(dimension, origin, rotation, SIZE, { x: 0, y: 10, z: 0 }, { x: 28, y: 10, z: 22 }, B.accent);
   for (const x of [4, 14, 24]) setLocal(dimension, origin, rotation, SIZE, x, 11, 11, I.equipment);
 

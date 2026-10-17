@@ -31,6 +31,24 @@ import {
   buildArmyPerimeterWall
 } from "./structures/army_expansion.js";
 import { buildWatchTower } from "./structures/watch_tower.js";
+import { buildAirTrafficControlTower } from "./structures/air_traffic_control_tower.js";
+import {
+  buildHQAdministrationWing,
+  buildHQCommandRotunda,
+  buildCeremonialFountainPlaza,
+  buildOfficersQuarters,
+  buildLogisticsHall,
+  buildHeavyVehicleMaintenanceHangar
+} from "./structures/base_expansion.js";
+import {
+  buildHardenedFighterShelter,
+  buildFighterShelterRow,
+  buildHelicopterHangar,
+  buildAirfieldOperationsBuilding,
+  buildFuelTankFarm,
+  buildRadarRadomeFacility,
+  buildHelicopterApron
+} from "./structures/airforce_expansion.js";
 import {
   buildRunwayStraight,
   buildRunwayThreshold,
@@ -221,6 +239,15 @@ async function constructPreview(player, session) {
       case "base_headquarters":
         buildBaseHeadquarters(player.dimension, session.origin, session.rotation, session.variantId);
         break;
+      case "hq_administration_wing":
+        buildHQAdministrationWing(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "hq_command_rotunda":
+        buildHQCommandRotunda(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "ceremonial_fountain_plaza":
+        buildCeremonialFountainPlaza(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
       case "large_aircraft_hangar":
         buildLargeAircraftHangar(player.dimension, session.origin, session.rotation, session.variantId);
         break;
@@ -245,8 +272,38 @@ async function constructPreview(player, session) {
       case "army_perimeter_wall":
         buildArmyPerimeterWall(player.dimension, session.origin, session.rotation, session.variantId);
         break;
+      case "officers_quarters":
+        buildOfficersQuarters(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "heavy_vehicle_maintenance_hangar":
+        buildHeavyVehicleMaintenanceHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
       case "watch_tower":
         buildWatchTower(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "air_traffic_control_tower":
+        buildAirTrafficControlTower(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "hardened_fighter_shelter":
+        buildHardenedFighterShelter(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "fighter_shelter_row":
+        buildFighterShelterRow(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "helicopter_hangar":
+        buildHelicopterHangar(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "airfield_operations_building":
+        buildAirfieldOperationsBuilding(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "radar_radome_facility":
+        buildRadarRadomeFacility(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "logistics_hall":
+        buildLogisticsHall(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "fuel_tank_farm":
+        buildFuelTankFarm(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       case "runway_threshold":
         buildRunwayThreshold(player.dimension, session.origin, session.rotation, session.variantId);
@@ -262,6 +319,9 @@ async function constructPreview(player, session) {
         break;
       case "aircraft_apron":
         buildAircraftApron(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "helicopter_apron":
+        buildHelicopterApron(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       default:
         throw new Error(`No builder registered for ${session.structure.id}`);
