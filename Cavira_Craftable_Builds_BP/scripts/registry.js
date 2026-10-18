@@ -247,9 +247,54 @@ export const STRUCTURES = {
   ],
   strategic: [
     {
+      id: "small_tactical_radar_post", name: "Small Tactical Radar Post",
+      description: "Compact forward radar post with an elevated rectangular array, operations consoles and perimeter lighting.",
+      size: { x: 15, y: 12, z: 15 }, foundationDepth: 2
+    },
+    {
+      id: "medium_radar_station", name: "Medium Radar Station",
+      description: "Hardened radar station with a broad elevated array, divided operations floor, servers and service lighting.",
+      size: { x: 25, y: 18, z: 21 }, foundationDepth: 2
+    },
+    {
+      id: "large_early_warning_radar_complex", name: "Large Early-Warning Radar Complex",
+      description: "Two-level strategic surveillance complex with a massive early-warning panel, server rooms and support towers.",
+      size: { x: 39, y: 28, z: 33 }, foundationDepth: 2
+    },
+    {
       id: "radar_radome_facility", name: "Radar & Radome Facility",
       description: "Large stepped operations base with elevated white radome and four strategic-service cylinders.",
       size: { x: 33, y: 22, z: 33 }, foundationDepth: 2
+    },
+    {
+      id: "small_communications_dish_station", name: "Small Communications Dish Station",
+      description: "Compact communications building carrying a roof-mounted parabolic dish and a furnished control room.",
+      size: { x: 13, y: 14, z: 13 }, foundationDepth: 2
+    },
+    {
+      id: "medium_satellite_dish_station", name: "Medium Satellite Dish Station",
+      description: "Operational satellite ground station with a large dish, divided control floor and communications servers.",
+      size: { x: 23, y: 24, z: 23 }, foundationDepth: 2
+    },
+    {
+      id: "large_strategic_satellite_array", name: "Large Strategic Satellite Array",
+      description: "Two-storey joint communications centre supporting one principal dish and two auxiliary tracking dishes.",
+      size: { x: 37, y: 36, z: 37 }, foundationDepth: 2
+    },
+    {
+      id: "standalone_small_satellite_dish", name: "Standalone Small Satellite Dish",
+      description: "Small freestanding parabolic communications dish on an illuminated equipment pedestal.",
+      size: { x: 9, y: 11, z: 9 }, foundationDepth: 2
+    },
+    {
+      id: "standalone_medium_satellite_dish", name: "Standalone Medium Satellite Dish",
+      description: "Medium freestanding satellite dish with a reinforced pedestal and corner service lights.",
+      size: { x: 15, y: 19, z: 15 }, foundationDepth: 2
+    },
+    {
+      id: "standalone_large_satellite_dish", name: "Standalone Large Satellite Dish",
+      description: "Large freestanding strategic dish with a tall pedestal, maintenance ring and illuminated service perimeter.",
+      size: { x: 25, y: 29, z: 25 }, foundationDepth: 2
     }
   ],
   logistics: [

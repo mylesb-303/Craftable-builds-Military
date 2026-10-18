@@ -78,6 +78,17 @@ import {
   buildLargeNuclearBunker,
   buildStrategicOperationsBunker
 } from "./structures/bunker_expansion.js";
+import {
+  buildSmallTacticalRadarPost,
+  buildMediumRadarStation,
+  buildLargeEarlyWarningRadarComplex,
+  buildSmallCommunicationsDishStation,
+  buildMediumSatelliteDishStation,
+  buildLargeStrategicSatelliteArray,
+  buildStandaloneSmallSatelliteDish,
+  buildStandaloneMediumSatelliteDish,
+  buildStandaloneLargeSatelliteDish
+} from "./structures/strategic_expansion.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -322,6 +333,33 @@ async function constructPreview(player, session) {
         break;
       case "radar_radome_facility":
         buildRadarRadomeFacility(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "small_tactical_radar_post":
+        buildSmallTacticalRadarPost(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "medium_radar_station":
+        buildMediumRadarStation(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "large_early_warning_radar_complex":
+        buildLargeEarlyWarningRadarComplex(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "small_communications_dish_station":
+        buildSmallCommunicationsDishStation(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "medium_satellite_dish_station":
+        buildMediumSatelliteDishStation(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "large_strategic_satellite_array":
+        buildLargeStrategicSatelliteArray(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "standalone_small_satellite_dish":
+        buildStandaloneSmallSatelliteDish(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "standalone_medium_satellite_dish":
+        buildStandaloneMediumSatelliteDish(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "standalone_large_satellite_dish":
+        buildStandaloneLargeSatelliteDish(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       case "logistics_hall":
         buildLogisticsHall(player.dimension, session.origin, session.rotation, session.variantId);
