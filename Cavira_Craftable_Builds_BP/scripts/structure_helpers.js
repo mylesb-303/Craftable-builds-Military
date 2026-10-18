@@ -14,6 +14,7 @@ export function createBlocks(variantId) {
   B.cyan = BlockPermutation.resolve("minecraft:cyan_concrete");
   B.blue = BlockPermutation.resolve("minecraft:light_blue_concrete");
   B.dark = BlockPermutation.resolve("minecraft:deepslate_tiles");
+  B.obsidian = BlockPermutation.resolve("minecraft:obsidian");
   B.road = BlockPermutation.resolve("minecraft:black_concrete");
   B.post = BlockPermutation.resolve("minecraft:stripped_oak_log");
   B.water = BlockPermutation.resolve("minecraft:light_blue_stained_glass");

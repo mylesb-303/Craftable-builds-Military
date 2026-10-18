@@ -72,6 +72,12 @@ import {
   buildCoastalDefenceBunker,
   buildSeawallModule
 } from "./structures/navy_expansion.js";
+import {
+  buildSmallNuclearBunker,
+  buildMediumNuclearBunker,
+  buildLargeNuclearBunker,
+  buildStrategicOperationsBunker
+} from "./structures/bunker_expansion.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -244,7 +250,7 @@ async function constructPreview(player, session) {
   ACTIVE_PREVIEWS.delete(player.id);
   const snapshot = captureVolume(player.dimension, session.origin, session.structure.size, session.rotation);
   try {
-    if (session.structure.placementMode !== "overlay") {
+    if (session.structure.placementMode !== "overlay" && session.structure.placementMode !== "excavation") {
       clearVolume(player.dimension, session.origin, session.structure.size, session.rotation);
     }
     switch (session.structure.id) {
@@ -397,6 +403,18 @@ async function constructPreview(player, session) {
         break;
       case "seawall_module":
         buildSeawallModule(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "small_nuclear_bunker":
+        buildSmallNuclearBunker(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "medium_nuclear_bunker":
+        buildMediumNuclearBunker(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "large_nuclear_bunker":
+        buildLargeNuclearBunker(player.dimension, session.origin, session.rotation, session.variantId);
+        break;
+      case "strategic_operations_bunker":
+        buildStrategicOperationsBunker(player.dimension, session.origin, session.rotation, session.variantId);
         break;
       default:
         throw new Error(`No builder registered for ${session.structure.id}`);

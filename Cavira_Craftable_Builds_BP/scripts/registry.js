@@ -3,6 +3,7 @@ export const CATEGORIES = [
   { id: "army", name: "Army", icon: "§2★" },
   { id: "air_force", name: "Air Force", icon: "§b✈" },
   { id: "navy", name: "Navy", icon: "§9⚓" },
+  { id: "bunkers", name: "Bunkers", icon: "§5⬛" },
   { id: "strategic", name: "Strategic / Joint", icon: "§6◆" },
   { id: "logistics", name: "Logistics & Support", icon: "§e▣" },
   { id: "modular", name: "Modular Base", icon: "§8▦" }
@@ -220,6 +221,28 @@ export const STRUCTURES = {
       id: "seawall_module", name: "Seawall Module",
       description: "Repeatable deep-founded harbour wall with service walk and navigation lights.",
       size: { x: 21, y: 9, z: 7 }, foundationDepth: 3, placementMode: "overlay"
+    }
+  ],
+  bunkers: [
+    {
+      id: "small_nuclear_bunker", name: "Small Nuclear Bunker",
+      description: "Deep compact four-person survival bunker with command post, stores, power, filtration and escape shaft inside an obsidian outer frame.",
+      size: { x: 23, y: 20, z: 19 }, foundationDepth: 18, placementMode: "excavation"
+    },
+    {
+      id: "medium_nuclear_bunker", name: "Medium Nuclear Bunker",
+      description: "Deep twelve-person operational bunker with medical, barracks, command, storage, utilities and redundant escape access.",
+      size: { x: 31, y: 25, z: 25 }, foundationDepth: 23, placementMode: "excavation"
+    },
+    {
+      id: "large_nuclear_bunker", name: "Large Nuclear Bunker",
+      description: "Multi-level hardened bunker for roughly thirty occupants with operations, accommodation, medical and engineering floors.",
+      size: { x: 41, y: 31, z: 33 }, foundationDepth: 29, placementMode: "excavation"
+    },
+    {
+      id: "strategic_operations_bunker", name: "Strategic Underground Operations Centre",
+      description: "Vast three-level joint command complex with situation room, coordination consoles, servers, medical, accommodation and redundant utilities.",
+      size: { x: 51, y: 37, z: 41 }, foundationDepth: 35, placementMode: "excavation"
     }
   ],
   strategic: [

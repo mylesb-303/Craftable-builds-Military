@@ -38,7 +38,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.1.0_Navy_Overhaul.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.2.0_Navy_and_Bunkers.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -51,5 +51,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.1.0-Navy-Overhaul
-          path: dist/Cavira_Craftable_Builds_1.1.0_Navy_Overhaul.mcaddon
+          name: Cavira-Craftable-Builds-1.2.0-Navy-and-Bunkers
+          path: dist/Cavira_Craftable_Builds_1.2.0_Navy_and_Bunkers.mcaddon
