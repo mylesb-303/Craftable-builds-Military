@@ -106,7 +106,7 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
     setLocal(dimension, origin, rotation, 11, 2, z, B.camoA);
   }
 
-  // Reception: desk, thin monitor panes and control panels.
+  // Reception: desk, solid monitor blocks and control panels.
   fill(dimension, origin, rotation, { x: 7, y: 2, z: 12 }, { x: 13, y: 2, z: 12 }, I.counter);
   for (const x of [8, 10, 12]) {
     setLocal(dimension, origin, rotation, x, 3, 12, I.keyboard);

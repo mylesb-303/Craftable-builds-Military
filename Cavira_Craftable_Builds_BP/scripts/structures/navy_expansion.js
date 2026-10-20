@@ -36,13 +36,24 @@ export function buildNavalHeadquarters(dimension, origin, rotation, variantId) {
   buildRectShell(dimension, origin, rotation, SIZE, B, 12, 14, { wallTop: 9, roofY: 10, windowStep: 4 });
   fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 2, z: 10 }, { x: 25, y: 8, z: 10 }, B.wall);
   for (const x of [4, 9, 13, 17, 22]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z: 10 }, { x: x + 1, y: 4, z: 10 }, B.air);
+  // Fleet command room: situation table, solid display blocks and stair seating.
   fillLocal(dimension, origin, rotation, SIZE, { x: 7, y: 2, z: 3 }, { x: 19, y: 2, z: 5 }, I.counter);
-  for (const x of [8, 11, 14, 17]) setLocal(dimension, origin, rotation, SIZE, x, 3, 3, I.monitor);
+  for (const x of [8, 11, 14, 17]) {
+    setLocal(dimension, origin, rotation, SIZE, x, 3, 3, I.monitor);
+    setLocal(dimension, origin, rotation, SIZE, x, 2, 7, I.seat);
+  }
+  for (const x of [4, 7, 20, 23]) {
+    setLocal(dimension, origin, rotation, SIZE, x, 2, 3, I.server);
+    setLocal(dimension, origin, rotation, SIZE, x, 2, 6, I.equipment);
+  }
+  // Administration and communications rooms behind the central corridor.
   for (const x of [3, 8, 18, 23]) {
     setLocal(dimension, origin, rotation, SIZE, x, 2, 14, I.counter);
     setLocal(dimension, origin, rotation, SIZE, x, 3, 14, I.console);
     setLocal(dimension, origin, rotation, SIZE, x, 2, 17, I.filing);
+    setLocal(dimension, origin, rotation, SIZE, x, 2, 16, I.seat);
   }
+  for (const x of [5, 11, 15, 21]) setLocal(dimension, origin, rotation, SIZE, x, 2, 18, I.storage);
   fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 6, z: 20 }, { x: 25, y: 6, z: 20 }, B.blue);
   placeLights(dimension, origin, rotation, SIZE, [[4,4],[10,4],[16,4],[22,4],[4,15],[10,15],[16,15],[22,15]], 10, B);
 }
@@ -53,6 +64,12 @@ export function buildHarbourControlTower(dimension, origin, rotation, variantId)
   buildFoundation(dimension, origin, rotation, SIZE, B);
   fillLocal(dimension, origin, rotation, SIZE, { x: 4, y: 2, z: 4 }, { x: 10, y: 19, z: 10 }, B.wall);
   fillLocal(dimension, origin, rotation, SIZE, { x: 5, y: 2, z: 5 }, { x: 9, y: 19, z: 9 }, B.air);
+  const stair = I.seat;
+  for (let y = 2; y <= 18; y++) {
+    const z = 9 - ((y - 2) % 5);
+    setLocal(dimension, origin, rotation, SIZE, 9, y, Math.max(5, z), stair);
+    if (y % 4 === 0) setLocal(dimension, origin, rotation, SIZE, 7, y, 7, B.light);
+  }
   fillLocal(dimension, origin, rotation, SIZE, { x: 2, y: 19, z: 2 }, { x: 12, y: 20, z: 12 }, B.frame);
   fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 21, z: 1 }, { x: 13, y: 23, z: 13 }, B.glass);
   fillLocal(dimension, origin, rotation, SIZE, { x: 2, y: 21, z: 2 }, { x: 12, y: 23, z: 12 }, B.air);
@@ -61,7 +78,9 @@ export function buildHarbourControlTower(dimension, origin, rotation, variantId)
   for (const [x, z] of [[3,3],[7,3],[11,3],[3,7],[11,7],[3,11],[7,11],[11,11]]) {
     setLocal(dimension, origin, rotation, SIZE, x, 20, z, I.console);
     setLocal(dimension, origin, rotation, SIZE, x, 21, z, I.monitor);
+    setLocal(dimension, origin, rotation, SIZE, x, 20, Math.min(12, z + 2), I.seat);
   }
+  for (const [x,z] of [[3,3],[7,3],[11,3],[3,7],[11,7],[3,11],[7,11],[11,11]]) setLocal(dimension, origin, rotation, SIZE, x, 24, z, B.light);
 }
 
 export function buildPierStraight(dimension, origin, rotation, variantId) {
@@ -114,17 +133,21 @@ export function buildHeavyShipBerth(dimension, origin, rotation, variantId) {
 }
 
 export function buildSubmarineServiceBerth(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 17, y: 8, z: 41 };
+  const SIZE = { x: 31, y: 8, z: 41 };
   const { B, I } = createBlocks(variantId);
+  // Nineteen-block clear water channel accommodates the current submarine
+  // entity with generous turning and fender clearance.
   buildMarineDeck(dimension, origin, rotation, SIZE, B, [
-    { x1: 0, z1: 0, x2: 4, z2: 40 },
-    { x1: 12, z1: 0, x2: 16, z2: 40 },
-    { x1: 5, z1: 35, x2: 11, z2: 40 }
+    { x1: 0, z1: 0, x2: 5, z2: 40 },
+    { x1: 25, z1: 0, x2: 30, z2: 40 },
+    { x1: 6, z1: 35, x2: 24, z2: 40 }
   ]);
-  addPierFurniture(dimension, origin, rotation, SIZE, B, [1, 15]);
+  addPierFurniture(dimension, origin, rotation, SIZE, B, [1, 29]);
   for (let z = 5; z < 34; z += 8) {
     setLocal(dimension, origin, rotation, SIZE, 3, 5, z, I.equipment);
-    setLocal(dimension, origin, rotation, SIZE, 13, 5, z, I.equipment);
+    setLocal(dimension, origin, rotation, SIZE, 27, 5, z, I.equipment);
+    fillLocal(dimension, origin, rotation, SIZE, { x: 5, y: 4, z }, { x: 6, y: 6, z }, B.dark);
+    fillLocal(dimension, origin, rotation, SIZE, { x: 24, y: 4, z }, { x: 25, y: 6, z }, B.dark);
   }
 }
 
@@ -164,29 +187,30 @@ export function buildDryDockGateEnd(dimension, origin, rotation, variantId) {
 }
 
 export function buildNuclearSubmarinePen(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 23, y: 20, z: 45 };
+  const SIZE = { x: 39, y: 24, z: 45 };
   const { B, I } = createBlocks(variantId);
-  // Two protected service walks surround a water channel; the roof is a hardened arch.
+  // Eight-block service galleries surround a twenty-three-block clear water
+  // channel. The taller arch preserves clearance above the submarine sail.
   buildMarineDeck(dimension, origin, rotation, SIZE, B, [
-    { x1: 0, z1: 0, x2: 5, z2: 44 },
-    { x1: 17, z1: 0, x2: 22, z2: 44 },
-    { x1: 6, z1: 0, x2: 16, z2: 6 }
+    { x1: 0, z1: 0, x2: 7, z2: 44 },
+    { x1: 31, z1: 0, x2: 38, z2: 44 },
+    { x1: 8, z1: 0, x2: 30, z2: 6 }
   ]);
   for (let z = 0; z < 45; z++) {
-    for (let y = 5; y <= 15; y++) {
+    for (let y = 5; y <= 19; y++) {
       const inset = Math.max(0, Math.floor((y - 5) / 3));
-      setLocal(dimension, origin, rotation, SIZE, Math.min(5 + inset, 10), y, z, B.dark);
-      setLocal(dimension, origin, rotation, SIZE, Math.max(17 - inset, 12), y, z, B.dark);
+      setLocal(dimension, origin, rotation, SIZE, Math.min(7 + inset, 15), y, z, B.dark);
+      setLocal(dimension, origin, rotation, SIZE, Math.max(31 - inset, 23), y, z, B.dark);
     }
-    for (let x = 9; x <= 13; x++) setLocal(dimension, origin, rotation, SIZE, x, 17, z, B.accent);
+    for (let x = 15; x <= 23; x++) setLocal(dimension, origin, rotation, SIZE, x, 21, z, B.accent);
   }
-  fillLocal(dimension, origin, rotation, SIZE, { x: 0, y: 5, z: 0 }, { x: 5, y: 15, z: 0 }, B.secure);
-  fillLocal(dimension, origin, rotation, SIZE, { x: 17, y: 5, z: 0 }, { x: 22, y: 15, z: 0 }, B.secure);
+  fillLocal(dimension, origin, rotation, SIZE, { x: 0, y: 5, z: 0 }, { x: 7, y: 19, z: 0 }, B.secure);
+  fillLocal(dimension, origin, rotation, SIZE, { x: 31, y: 5, z: 0 }, { x: 38, y: 19, z: 0 }, B.secure);
   for (let z = 6; z < 43; z += 7) {
-    setLocal(dimension, origin, rotation, SIZE, 3, 5, z, I.equipment);
-    setLocal(dimension, origin, rotation, SIZE, 19, 5, z, I.equipment);
-    setLocal(dimension, origin, rotation, SIZE, 8, 16, z, B.light);
-    setLocal(dimension, origin, rotation, SIZE, 14, 16, z, B.light);
+    setLocal(dimension, origin, rotation, SIZE, 4, 5, z, I.equipment);
+    setLocal(dimension, origin, rotation, SIZE, 34, 5, z, I.equipment);
+    setLocal(dimension, origin, rotation, SIZE, 12, 18, z, B.light);
+    setLocal(dimension, origin, rotation, SIZE, 26, 18, z, B.light);
   }
 }
 

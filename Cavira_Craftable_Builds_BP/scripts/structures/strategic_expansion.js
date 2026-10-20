@@ -1,56 +1,5 @@
 import { createBlocks, setLocal, fillLocal, buildFoundation, buildRectShell, placeLights } from "../structure_helpers.js";
 
-function buildMast(dimension, origin, rotation, size, cx, cz, fromY, toY, B) {
-  for (let y = fromY; y <= toY; y++) {
-    const block = y % 3 === 0 ? B.secure : B.dark;
-    setLocal(dimension, origin, rotation, size, cx, y, cz, block);
-    for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-      setLocal(dimension, origin, rotation, size, cx + dx, y, cz + dz, y % 2 === 0 ? B.bars : B.air);
-    }
-  }
-}
-
-function buildRadarPanel(dimension, origin, rotation, size, fromX, toX, fromY, toY, z, B) {
-  for (let x = fromX; x <= toX; x++) for (let y = fromY; y <= toY; y++) {
-    const border = x === fromX || x === toX || y === fromY || y === toY;
-    const grid = (x - fromX) % 4 === 0 || (y - fromY) % 3 === 0;
-    setLocal(dimension, origin, rotation, size, x, y, z, border ? B.dark : grid ? B.frame : B.secure);
-  }
-  const centreX = Math.floor((fromX + toX) / 2);
-  fillLocal(dimension, origin, rotation, size, { x: centreX - 1, y: fromY - 1, z }, { x: centreX + 1, y: fromY, z }, B.warning);
-  for (const x of [fromX, toX]) setLocal(dimension, origin, rotation, size, x, toY, z, B.light);
-}
-
-function buildDish(dimension, origin, rotation, size, cx, cy, cz, radius, B) {
-  // A vertical, slightly upward-facing stepped parabola. The centre is recessed
-  // and the rim projects forward, producing a readable vanilla-block dish.
-  for (let dx = -radius; dx <= radius; dx++) for (let dy = -radius; dy <= radius; dy++) {
-    const squared = dx * dx + dy * dy;
-    if (squared > radius * radius) continue;
-    const depth = Math.round((radius * radius - squared) / Math.max(2, radius * 2));
-    const x = cx + dx;
-    const y = cy + dy;
-    const z = cz - depth;
-    const rim = squared >= (radius - 1) * (radius - 1);
-    setLocal(dimension, origin, rotation, size, x, y, z, rim ? B.dark : B.white);
-  }
-  const feedZ = Math.min(size.z - 2, cz + Math.max(2, Math.floor(radius / 2)));
-  fillLocal(dimension, origin, rotation, size, { x: cx, y: cy, z: cz }, { x: cx, y: cy, z: feedZ }, B.dark);
-  setLocal(dimension, origin, rotation, size, cx, cy, feedZ, B.light);
-
-  // Three articulated support arms from the bowl to the receiver.
-  for (const [sx, sy] of [[cx - radius + 1, cy], [cx + radius - 1, cy], [cx, cy + radius - 1]]) {
-    const steps = Math.max(Math.abs(sx - cx), Math.abs(sy - cy), 1);
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const x = Math.round(sx + (cx - sx) * t);
-      const y = Math.round(sy + (cy - sy) * t);
-      const z = Math.round(cz + (feedZ - cz) * t);
-      setLocal(dimension, origin, rotation, size, x, y, z, B.dark);
-    }
-  }
-}
-
 function buildPedestal(dimension, origin, rotation, size, cx, cz, baseY, topY, radius, B) {
   for (let x = cx - radius; x <= cx + radius; x++) for (let z = cz - radius; z <= cz + radius; z++) {
     const distance = Math.sqrt((x - cx) ** 2 + (z - cz) ** 2);
@@ -63,35 +12,31 @@ function buildPedestal(dimension, origin, rotation, size, cx, cz, baseY, topY, r
   for (let y = baseY + 2; y <= topY; y += 3) setLocal(dimension, origin, rotation, size, cx, y, cz + 2, B.light);
 }
 
-function furnishOperationsRoom(dimension, origin, rotation, size, y, z, xs, I) {
-  for (const x of xs) {
-    setLocal(dimension, origin, rotation, size, x, y, z, I.console);
-    setLocal(dimension, origin, rotation, size, x, y + 1, z, I.monitor);
+function buildUpwardDish(dimension, origin, rotation, size, cx, bowlY, cz, radius, B, scanner = false) {
+  const rise = Math.max(2, Math.ceil(radius / 2));
+  for (let dx = -radius; dx <= radius; dx++) for (let dz = -radius; dz <= radius; dz++) {
+    const squared = dx * dx + dz * dz;
+    if (squared > radius * radius) continue;
+    const y = bowlY + Math.round((squared / (radius * radius)) * rise);
+    const rim = squared >= (radius - 1.2) * (radius - 1.2);
+    const ribs = dx === 0 || dz === 0 || Math.abs(dx) === Math.abs(dz);
+    setLocal(dimension, origin, rotation, size, cx + dx, y, cz + dz, rim ? B.dark : ribs && scanner ? B.frame : B.white);
   }
-}
-
-export function buildSmallTacticalRadarPost(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 15, y: 12, z: 15 };
-  const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 6, 8, { wallTop: 5, roofY: 6, windows: false });
-  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 3, [4,7,10], I);
-  for (const x of [3,11]) setLocal(dimension, origin, rotation, SIZE, x, 2, 9, I.machine);
-  buildMast(dimension, origin, rotation, SIZE, 7, 7, 7, 9, B);
-  buildRadarPanel(dimension, origin, rotation, SIZE, 2, 12, 8, 11, 7, B);
-  for (const [x,z] of [[1,1],[13,1],[1,13],[13,13]]) setLocal(dimension, origin, rotation, SIZE, x, 3, z, B.light);
-}
-
-export function buildMediumRadarStation(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 25, y: 18, z: 21 };
-  const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 10, 14, { wallTop: 7, roofY: 8, windows: false });
-  wallRoom(dimension, origin, rotation, SIZE, 8, B);
-  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 4, [3,6,10,14,18,21], I);
-  for (const x of [3,6,18,21]) setLocal(dimension, origin, rotation, SIZE, x, 2, 13, I.server);
-  buildMast(dimension, origin, rotation, SIZE, 12, 10, 9, 13, B);
-  buildRadarPanel(dimension, origin, rotation, SIZE, 3, 21, 12, 17, 10, B);
-  for (const [x,z] of [[2,2],[22,2],[2,18],[22,18]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 5, z }, B.post);
-  placeLights(dimension, origin, rotation, SIZE, [[2,2],[22,2],[2,18],[22,18],[6,6],[18,6],[6,15],[18,15]], 8, B);
+  const receiverY = bowlY + rise + 4;
+  fillLocal(dimension, origin, rotation, size, { x: cx, y: bowlY + 1, z: cz }, { x: cx, y: receiverY, z: cz }, B.dark);
+  setLocal(dimension, origin, rotation, size, cx, receiverY, cz, scanner ? B.warning : B.light);
+  for (const [sx, sz] of [[cx - radius + 1, cz], [cx + radius - 1, cz], [cx, cz - radius + 1], [cx, cz + radius - 1]]) {
+    const steps = Math.max(Math.abs(sx - cx), Math.abs(sz - cz));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / Math.max(1, steps);
+      const x = Math.round(sx + (cx - sx) * t);
+      const z = Math.round(sz + (cz - sz) * t);
+      const edgeDistance = Math.sqrt((sx - cx) ** 2 + (sz - cz) ** 2);
+      const edgeY = bowlY + Math.round((edgeDistance * edgeDistance / (radius * radius)) * rise);
+      const y = Math.round(edgeY + (receiverY - edgeY) * t);
+      setLocal(dimension, origin, rotation, size, x, y, z, B.dark);
+    }
+  }
 }
 
 function wallRoom(dimension, origin, rotation, size, yTop, B) {
@@ -101,95 +46,121 @@ function wallRoom(dimension, origin, rotation, size, yTop, B) {
   fillLocal(dimension, origin, rotation, size, { x: centre - 1, y: 2, z: middle }, { x: centre + 1, y: 4, z: middle }, B.air);
 }
 
-export function buildLargeEarlyWarningRadarComplex(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 39, y: 28, z: 33 };
+function furnishOperationsRoom(dimension, origin, rotation, size, y, z, xs, I) {
+  for (const x of xs) {
+    setLocal(dimension, origin, rotation, size, x, y, z, I.console);
+    setLocal(dimension, origin, rotation, size, x, y + 1, z, I.monitor);
+    if (z + 2 < size.z - 1) setLocal(dimension, origin, rotation, size, x, y, z + 2, I.seat);
+  }
+}
+
+export function buildSmallTacticalRadarPost(dimension, origin, rotation, variantId) {
+  const SIZE = { x: 19, y: 20, z: 19 };
   const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 17, 21, { wallTop: 11, roofY: 12, windows: false, entranceTop: 5 });
-  fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 7, z: 1 }, { x: 37, y: 7, z: 31 }, B.floor);
-  for (const y of [2,8]) {
-    furnishOperationsRoom(dimension, origin, rotation, SIZE, y, 5, [4,8,12,17,21,26,30,34], I);
-    for (const x of [4,7,31,34]) setLocal(dimension, origin, rotation, SIZE, x, y, 18, I.server);
+  buildRectShell(dimension, origin, rotation, SIZE, B, 8, 10, { wallTop: 6, roofY: 7, windows: false });
+  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 3, [4, 9, 14], I);
+  for (const x of [3, 15]) setLocal(dimension, origin, rotation, SIZE, x, 2, 11, I.server);
+  buildPedestal(dimension, origin, rotation, SIZE, 9, 9, 8, 10, 3, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 9, 11, 9, 6, B, true);
+  placeLights(dimension, origin, rotation, SIZE, [[1,1],[17,1],[1,17],[17,17]], 7, B);
+}
+
+export function buildMediumRadarStation(dimension, origin, rotation, variantId) {
+  const SIZE = { x: 31, y: 27, z: 27 };
+  const { B, I } = createBlocks(variantId);
+  buildRectShell(dimension, origin, rotation, SIZE, B, 13, 17, { wallTop: 7, roofY: 8, windows: false });
+  wallRoom(dimension, origin, rotation, SIZE, 7, B);
+  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 4, [4,8,12,18,22,26], I);
+  for (const x of [3,6,24,27]) setLocal(dimension, origin, rotation, SIZE, x, 2, 17, I.server);
+  buildPedestal(dimension, origin, rotation, SIZE, 15, 13, 9, 15, 5, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 15, 16, 13, 10, B, true);
+  placeLights(dimension, origin, rotation, SIZE, [[2,2],[28,2],[2,24],[28,24],[8,8],[22,8]], 8, B);
+}
+
+export function buildLargeEarlyWarningRadarComplex(dimension, origin, rotation, variantId) {
+  const SIZE = { x: 45, y: 38, z: 39 };
+  const { B, I } = createBlocks(variantId);
+  buildRectShell(dimension, origin, rotation, SIZE, B, 20, 24, { wallTop: 11, roofY: 12, windows: false, entranceTop: 5 });
+  fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 7, z: 1 }, { x: 43, y: 7, z: 37 }, B.floor);
+  for (const y of [2,8]) furnishOperationsRoom(dimension, origin, rotation, SIZE, y, 5, [4,9,14,20,25,30,35,40], I);
+  for (const y of [2,8]) for (const x of [4,8,36,40]) setLocal(dimension, origin, rotation, SIZE, x, y, 21, I.server);
+  buildPedestal(dimension, origin, rotation, SIZE, 22, 20, 13, 21, 7, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 22, 22, 20, 15, B, true);
+  for (const [x,z] of [[4,4],[40,4],[4,34],[40,34]]) {
+    fillLocal(dimension, origin, rotation, SIZE, { x, y: 13, z }, { x, y: 24, z }, B.dark);
+    setLocal(dimension, origin, rotation, SIZE, x, 25, z, B.light);
   }
-  buildMast(dimension, origin, rotation, SIZE, 19, 15, 13, 20, B);
-  buildRadarPanel(dimension, origin, rotation, SIZE, 4, 34, 19, 27, 15, B);
-  for (const [x,z] of [[5,5],[33,5],[5,27],[33,27]]) {
-    fillLocal(dimension, origin, rotation, SIZE, { x, y: 13, z }, { x, y: 22, z }, B.dark);
-    setLocal(dimension, origin, rotation, SIZE, x, 23, z, B.light);
-  }
-  placeLights(dimension, origin, rotation, SIZE, [[4,4],[19,4],[34,4],[4,26],[19,26],[34,26]], 12, B);
+  placeLights(dimension, origin, rotation, SIZE, [[5,5],[15,5],[30,5],[40,5],[5,31],[15,31],[30,31],[40,31]], 12, B);
 }
 
 export function buildSmallCommunicationsDishStation(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 13, y: 14, z: 13 };
+  const SIZE = { x: 17, y: 20, z: 17 };
   const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 5, 7, { wallTop: 4, roofY: 5, windows: false });
-  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 3, [3,6,9], I);
-  buildPedestal(dimension, origin, rotation, SIZE, 6, 6, 6, 8, 2, B);
-  buildDish(dimension, origin, rotation, SIZE, 6, 9, 6, 4, B);
-  for (const [x,z] of [[1,1],[11,1],[1,11],[11,11]]) setLocal(dimension, origin, rotation, SIZE, x, 3, z, B.light);
+  buildRectShell(dimension, origin, rotation, SIZE, B, 7, 9, { wallTop: 5, roofY: 6, windows: false });
+  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 3, [3,8,13], I);
+  buildPedestal(dimension, origin, rotation, SIZE, 8, 8, 7, 10, 3, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 8, 11, 8, 6, B);
+  placeLights(dimension, origin, rotation, SIZE, [[1,1],[15,1],[1,15],[15,15]], 6, B);
 }
 
 export function buildMediumSatelliteDishStation(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 23, y: 24, z: 23 };
+  const SIZE = { x: 29, y: 30, z: 29 };
   const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 9, 13, { wallTop: 7, roofY: 8, windows: false });
+  buildRectShell(dimension, origin, rotation, SIZE, B, 12, 16, { wallTop: 7, roofY: 8, windows: false });
   wallRoom(dimension, origin, rotation, SIZE, 7, B);
-  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 4, [3,6,10,14,17,20], I);
-  for (const x of [3,6,17,20]) setLocal(dimension, origin, rotation, SIZE, x, 2, 15, I.server);
-  buildPedestal(dimension, origin, rotation, SIZE, 11, 11, 9, 14, 4, B);
-  buildDish(dimension, origin, rotation, SIZE, 11, 15, 11, 8, B);
-  placeLights(dimension, origin, rotation, SIZE, [[2,2],[20,2],[2,20],[20,20],[7,7],[15,7],[7,15],[15,15]], 8, B);
+  furnishOperationsRoom(dimension, origin, rotation, SIZE, 2, 4, [4,8,12,16,20,24], I);
+  for (const x of [3,6,22,25]) setLocal(dimension, origin, rotation, SIZE, x, 2, 18, I.server);
+  buildPedestal(dimension, origin, rotation, SIZE, 14, 14, 9, 16, 5, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 14, 17, 14, 11, B);
+  placeLights(dimension, origin, rotation, SIZE, [[2,2],[26,2],[2,26],[26,26],[8,8],[20,8]], 8, B);
 }
 
 export function buildLargeStrategicSatelliteArray(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 37, y: 36, z: 37 };
+  const SIZE = { x: 45, y: 44, z: 45 };
   const { B, I } = createBlocks(variantId);
-  buildRectShell(dimension, origin, rotation, SIZE, B, 16, 20, { wallTop: 10, roofY: 11, windows: false, entranceTop: 5 });
-  fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 6, z: 1 }, { x: 35, y: 6, z: 35 }, B.floor);
-  for (const y of [2,7]) {
-    furnishOperationsRoom(dimension, origin, rotation, SIZE, y, 4, [4,8,12,17,21,26,30,33], I);
-    for (const x of [4,7,29,32]) setLocal(dimension, origin, rotation, SIZE, x, y, 16, I.server);
-  }
-  buildPedestal(dimension, origin, rotation, SIZE, 18, 18, 12, 23, 6, B);
-  buildDish(dimension, origin, rotation, SIZE, 18, 24, 19, 11, B);
-  buildPedestal(dimension, origin, rotation, SIZE, 7, 8, 12, 17, 3, B);
-  buildDish(dimension, origin, rotation, SIZE, 7, 19, 9, 5, B);
-  buildPedestal(dimension, origin, rotation, SIZE, 29, 8, 12, 17, 3, B);
-  buildDish(dimension, origin, rotation, SIZE, 29, 19, 9, 5, B);
-  for (const [x,z] of [[2,2],[34,2],[2,34],[34,34]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 8, z }, B.post);
-  placeLights(dimension, origin, rotation, SIZE, [[2,2],[34,2],[2,34],[34,34],[10,28],[18,28],[26,28]], 11, B);
+  buildRectShell(dimension, origin, rotation, SIZE, B, 20, 24, { wallTop: 10, roofY: 11, windows: false, entranceTop: 5 });
+  fillLocal(dimension, origin, rotation, SIZE, { x: 1, y: 6, z: 1 }, { x: 43, y: 6, z: 43 }, B.floor);
+  for (const y of [2,7]) furnishOperationsRoom(dimension, origin, rotation, SIZE, y, 4, [4,9,14,20,25,30,35,40], I);
+  for (const y of [2,7]) for (const x of [4,8,36,40]) setLocal(dimension, origin, rotation, SIZE, x, y, 18, I.server);
+  buildPedestal(dimension, origin, rotation, SIZE, 22, 27, 12, 27, 8, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 22, 28, 27, 15, B);
+  buildPedestal(dimension, origin, rotation, SIZE, 9, 9, 12, 18, 4, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 9, 19, 9, 7, B);
+  buildPedestal(dimension, origin, rotation, SIZE, 35, 9, 12, 18, 4, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 35, 19, 9, 7, B);
+  for (const [x,z] of [[2,2],[42,2],[2,42],[42,42]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 9, z }, B.post);
+  placeLights(dimension, origin, rotation, SIZE, [[2,2],[42,2],[2,42],[42,42],[12,36],[22,40],[32,36]], 11, B);
 }
 
 export function buildStandaloneSmallSatelliteDish(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 9, y: 11, z: 9 };
+  const SIZE = { x: 13, y: 17, z: 13 };
   const { B } = createBlocks(variantId);
   buildFoundation(dimension, origin, rotation, SIZE, B);
-  buildPedestal(dimension, origin, rotation, SIZE, 4, 4, 2, 6, 2, B);
-  buildDish(dimension, origin, rotation, SIZE, 4, 7, 4, 3, B);
-  for (const [x,z] of [[0,0],[8,0],[0,8],[8,8]]) setLocal(dimension, origin, rotation, SIZE, x, 2, z, B.light);
+  buildPedestal(dimension, origin, rotation, SIZE, 6, 6, 2, 7, 3, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 6, 8, 6, 5, B);
+  for (const [x,z] of [[0,0],[12,0],[0,12],[12,12]]) setLocal(dimension, origin, rotation, SIZE, x, 2, z, B.light);
 }
 
 export function buildStandaloneMediumSatelliteDish(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 15, y: 19, z: 15 };
+  const SIZE = { x: 21, y: 23, z: 21 };
   const { B } = createBlocks(variantId);
   buildFoundation(dimension, origin, rotation, SIZE, B);
-  buildPedestal(dimension, origin, rotation, SIZE, 7, 7, 2, 11, 4, B);
-  buildDish(dimension, origin, rotation, SIZE, 7, 12, 7, 6, B);
-  for (const [x,z] of [[1,1],[13,1],[1,13],[13,13]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 4, z }, B.post);
-  for (const [x,z] of [[1,1],[13,1],[1,13],[13,13]]) setLocal(dimension, origin, rotation, SIZE, x, 5, z, B.light);
+  buildPedestal(dimension, origin, rotation, SIZE, 10, 10, 2, 12, 5, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 10, 13, 10, 8, B);
+  for (const [x,z] of [[1,1],[19,1],[1,19],[19,19]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 5, z }, B.post);
+  for (const [x,z] of [[1,1],[19,1],[1,19],[19,19]]) setLocal(dimension, origin, rotation, SIZE, x, 6, z, B.light);
 }
 
 export function buildStandaloneLargeSatelliteDish(dimension, origin, rotation, variantId) {
-  const SIZE = { x: 25, y: 29, z: 25 };
+  const SIZE = { x: 31, y: 33, z: 31 };
   const { B } = createBlocks(variantId);
   buildFoundation(dimension, origin, rotation, SIZE, B);
-  buildPedestal(dimension, origin, rotation, SIZE, 12, 12, 2, 17, 6, B);
-  buildDish(dimension, origin, rotation, SIZE, 12, 18, 13, 10, B);
-  // Two maintenance rings with access lighting.
-  for (let x = 3; x <= 21; x++) for (let z = 3; z <= 21; z++) {
-    const distance = Math.sqrt((x - 12) ** 2 + (z - 12) ** 2);
-    if (distance >= 7.5 && distance <= 8.5) setLocal(dimension, origin, rotation, SIZE, x, 7, z, B.frame);
+  buildPedestal(dimension, origin, rotation, SIZE, 15, 15, 2, 18, 7, B);
+  buildUpwardDish(dimension, origin, rotation, SIZE, 15, 19, 15, 13, B);
+  for (let x = 3; x <= 27; x++) for (let z = 3; z <= 27; z++) {
+    const distance = Math.sqrt((x - 15) ** 2 + (z - 15) ** 2);
+    if (distance >= 9.5 && distance <= 10.5) setLocal(dimension, origin, rotation, SIZE, x, 8, z, B.frame);
   }
-  for (const [x,z] of [[2,2],[22,2],[2,22],[22,22],[12,3],[12,21]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 5, z }, B.post);
-  for (const [x,z] of [[2,2],[22,2],[2,22],[22,22],[12,3],[12,21]]) setLocal(dimension, origin, rotation, SIZE, x, 6, z, B.light);
+  for (const [x,z] of [[2,2],[28,2],[2,28],[28,28],[15,3],[15,27]]) fillLocal(dimension, origin, rotation, SIZE, { x, y: 2, z }, { x, y: 6, z }, B.post);
+  for (const [x,z] of [[2,2],[28,2],[2,28],[28,28],[15,3],[15,27]]) setLocal(dimension, origin, rotation, SIZE, x, 7, z, B.light);
 }

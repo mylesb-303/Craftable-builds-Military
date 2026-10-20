@@ -160,47 +160,47 @@ export const STRUCTURES = {
     {
       id: "pier_straight", name: "Pier Straight",
       description: "Water-preserving straight pier with deep supports, navigation lighting and mooring points.",
-      size: { x: 15, y: 7, z: 31 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 15, y: 7, z: 31 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "pier_corner", name: "Pier Corner",
       description: "Water-preserving ninety-degree pier corner for modular harbour routing.",
-      size: { x: 21, y: 7, z: 21 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 21, y: 7, z: 21 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "pier_t_junction", name: "Pier T-Junction",
       description: "Water-preserving T-shaped pier junction joining three modular dock directions.",
-      size: { x: 31, y: 7, z: 21 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 31, y: 7, z: 21 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "heavy_ship_berth", name: "Heavy Ship Berth",
       description: "Wide protected berth for large naval vessels with twin service walks and heavy fenders.",
-      size: { x: 21, y: 8, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 21, y: 8, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "submarine_service_berth", name: "Submarine Service Berth",
-      description: "Narrow water-channel berth with equipment stations for submarine servicing.",
-      size: { x: 17, y: 8, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+      description: "Extra-wide submarine water-channel berth with twin service walks and engineering stations.",
+      size: { x: 31, y: 8, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "naval_fueling_pier", name: "Naval Fueling Pier",
       description: "Reinforced fueling pier with protected pumping stations and marked service trunk.",
-      size: { x: 17, y: 9, z: 31 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 17, y: 9, z: 31 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dry_dock_side", name: "Dry-Dock Side Module",
       description: "Repeatable hardened dry-dock wall and illuminated upper service deck.",
-      size: { x: 11, y: 12, z: 41 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 11, y: 12, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dry_dock_gate_end", name: "Dry-Dock Gate & End",
       description: "Heavy modular dry-dock closure with side piers, gate structure and service gantry.",
-      size: { x: 31, y: 12, z: 13 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 31, y: 12, z: 13 }, foundationDepth: 3, previewFloorY: 8, placementMode: "overlay"
     },
     {
       id: "nuclear_submarine_pen", name: "Nuclear Submarine Pen",
-      description: "Large covered submarine water channel with hardened arch and protected engineering walks.",
-      size: { x: 23, y: 20, z: 45 }, foundationDepth: 3, placementMode: "overlay"
+      description: "Extra-wide covered submarine water channel with a high hardened arch and protected engineering walks.",
+      size: { x: 39, y: 24, z: 45 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dockside_loading_crane", name: "Dockside Loading Crane",
@@ -220,7 +220,7 @@ export const STRUCTURES = {
     {
       id: "seawall_module", name: "Seawall Module",
       description: "Repeatable deep-founded harbour wall with service walk and navigation lights.",
-      size: { x: 21, y: 9, z: 7 }, foundationDepth: 3, placementMode: "overlay"
+      size: { x: 21, y: 9, z: 7 }, foundationDepth: 3, previewFloorY: 5, placementMode: "overlay"
     }
   ],
   bunkers: [
@@ -248,18 +248,18 @@ export const STRUCTURES = {
   strategic: [
     {
       id: "small_tactical_radar_post", name: "Small Tactical Radar Post",
-      description: "Compact forward radar post with an elevated rectangular array, operations consoles and perimeter lighting.",
-      size: { x: 15, y: 12, z: 15 }, foundationDepth: 2
+      description: "Compact forward radar post with an elevated upward-facing circular array, operations consoles and perimeter lighting.",
+      size: { x: 19, y: 20, z: 19 }, foundationDepth: 2
     },
     {
       id: "medium_radar_station", name: "Medium Radar Station",
-      description: "Hardened radar station with a broad elevated array, divided operations floor, servers and service lighting.",
-      size: { x: 25, y: 18, z: 21 }, foundationDepth: 2
+      description: "Hardened radar station with a large elevated sky-facing array, divided operations floor, servers and service lighting.",
+      size: { x: 31, y: 27, z: 27 }, foundationDepth: 2
     },
     {
       id: "large_early_warning_radar_complex", name: "Large Early-Warning Radar Complex",
-      description: "Two-level strategic surveillance complex with a massive early-warning panel, server rooms and support towers.",
-      size: { x: 39, y: 28, z: 33 }, foundationDepth: 2
+      description: "Two-level strategic surveillance complex with a massive upward-facing circular early-warning array and support towers.",
+      size: { x: 45, y: 38, z: 39 }, foundationDepth: 2
     },
     {
       id: "radar_radome_facility", name: "Radar & Radome Facility",
@@ -269,32 +269,32 @@ export const STRUCTURES = {
     {
       id: "small_communications_dish_station", name: "Small Communications Dish Station",
       description: "Compact communications building carrying a roof-mounted parabolic dish and a furnished control room.",
-      size: { x: 13, y: 14, z: 13 }, foundationDepth: 2
+      size: { x: 17, y: 20, z: 17 }, foundationDepth: 2
     },
     {
       id: "medium_satellite_dish_station", name: "Medium Satellite Dish Station",
       description: "Operational satellite ground station with a large dish, divided control floor and communications servers.",
-      size: { x: 23, y: 24, z: 23 }, foundationDepth: 2
+      size: { x: 29, y: 30, z: 29 }, foundationDepth: 2
     },
     {
       id: "large_strategic_satellite_array", name: "Large Strategic Satellite Array",
       description: "Two-storey joint communications centre supporting one principal dish and two auxiliary tracking dishes.",
-      size: { x: 37, y: 36, z: 37 }, foundationDepth: 2
+      size: { x: 45, y: 44, z: 45 }, foundationDepth: 2
     },
     {
       id: "standalone_small_satellite_dish", name: "Standalone Small Satellite Dish",
       description: "Small freestanding parabolic communications dish on an illuminated equipment pedestal.",
-      size: { x: 9, y: 11, z: 9 }, foundationDepth: 2
+      size: { x: 13, y: 17, z: 13 }, foundationDepth: 2
     },
     {
       id: "standalone_medium_satellite_dish", name: "Standalone Medium Satellite Dish",
       description: "Medium freestanding satellite dish with a reinforced pedestal and corner service lights.",
-      size: { x: 15, y: 19, z: 15 }, foundationDepth: 2
+      size: { x: 21, y: 23, z: 21 }, foundationDepth: 2
     },
     {
       id: "standalone_large_satellite_dish", name: "Standalone Large Satellite Dish",
       description: "Large freestanding strategic dish with a tall pedestal, maintenance ring and illuminated service perimeter.",
-      size: { x: 25, y: 29, z: 25 }, foundationDepth: 2
+      size: { x: 31, y: 33, z: 31 }, foundationDepth: 2
     }
   ],
   logistics: [

@@ -64,11 +64,12 @@ function getGroundAnchor(player) {
   };
 }
 
-export function getPlacementOrigin(player, size, rotation, foundationDepth = 1) {
+export function getPlacementOrigin(player, size, rotation, foundationDepth = 1, previewFloorY) {
   const anchorWorld = getGroundAnchor(player);
+  const walkableY = previewFloorY ?? Math.max(0, foundationDepth - 1);
   const anchorLocal = {
     x: Math.floor((size.x - 1) / 2),
-    y: Math.max(0, foundationDepth - 1),
+    y: walkableY,
     z: size.z - 1
   };
   const anchorOffset = rotateXZ(anchorLocal.x, anchorLocal.z, size.x, size.z, rotation);
@@ -106,13 +107,14 @@ export function clearVolume(dimension, origin, size, rotation) {
   }
 }
 
-export function showFootprintPreview(dimension, origin, size, rotation, foundationDepth = 1) {
+export function showFootprintPreview(dimension, origin, size, rotation, foundationDepth = 1, previewFloorY) {
   const outline = BlockPermutation.resolve("minecraft:lime_concrete");
   const ground = BlockPermutation.resolve("minecraft:yellow_concrete");
+  const floorGuide = BlockPermutation.resolve("minecraft:cyan_concrete");
   const foundation = BlockPermutation.resolve("minecraft:orange_concrete");
   const changed = [];
   const seen = new Set();
-  const groundY = Math.max(0, foundationDepth - 1);
+  const groundY = previewFloorY ?? Math.max(0, foundationDepth - 1);
 
   const mark = (local, permutation) => {
     const loc = toWorldLocation(origin, local, size, rotation);
@@ -133,6 +135,21 @@ export function showFootprintPreview(dimension, origin, size, rotation, foundati
         (x === Math.floor((size.x - 1) / 2) || x === Math.ceil((size.x - 1) / 2));
       mark({ x, y: groundY, z }, isDoor ? ground : outline);
       mark({ x, y: size.y - 1, z }, isDoor ? ground : outline);
+    }
+  }
+
+  // A cross-hatched walkable-surface guide makes the completed floor/deck
+  // height visible before construction, including long walls and pathways.
+  const centreX = Math.floor((size.x - 1) / 2);
+  const centreZ = Math.floor((size.z - 1) / 2);
+  for (let x = 1; x < size.x - 1; x++) {
+    if (x % 5 === 0 || x === centreX) {
+      for (let z = 1; z < size.z - 1; z++) mark({ x, y: groundY, z }, floorGuide);
+    }
+  }
+  for (let z = 1; z < size.z - 1; z++) {
+    if (z % 5 === 0 || z === centreZ) {
+      for (let x = 1; x < size.x - 1; x++) mark({ x, y: groundY, z }, floorGuide);
     }
   }
 

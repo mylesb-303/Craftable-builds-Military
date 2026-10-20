@@ -71,7 +71,7 @@ export function buildGuardPost(dimension, origin, rotation, variantId = "standar
   setLocal(dimension, origin, rotation, 3, 8, 3, B.bars);
   setLocal(dimension, origin, rotation, 4, 8, 4, B.bars);
 
-  // Duty counter with recognisable thin screens and keyboard/control surfaces.
+  // Duty counter with solid screens and keyboard/control surfaces.
   fillLocal(dimension, origin, rotation, { x: 2, y: 2, z: 2 }, { x: 5, y: 2, z: 2 }, I.counter);
   for (const x of [2, 5]) {
     setLocal(dimension, origin, rotation, x, 3, 2, I.keyboard);

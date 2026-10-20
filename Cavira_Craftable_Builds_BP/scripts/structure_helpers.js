@@ -64,6 +64,11 @@ export function buildRectShell(dimension, origin, rotation, size, B, entranceFro
   }
 
   fillLocal(dimension, origin, rotation, size, { x: 0, y: roofY, z: 0 }, { x: size.x - 1, y: roofY, z: frontZ }, B.accent);
+  // Standard recessed lighting pass for every enclosed rectangular property.
+  // Individual builders can still add denser task lighting where needed.
+  for (let x = 3; x < size.x - 2; x += 6) {
+    for (let z = 3; z < size.z - 2; z += 6) setLocal(dimension, origin, rotation, size, x, roofY, z, B.light);
+  }
   for (const [x, z] of [[0, 0], [size.x - 1, 0], [0, frontZ], [size.x - 1, frontZ]]) {
     fillLocal(dimension, origin, rotation, size, { x, y: 2, z }, { x, y: roofY, z }, B.frame);
   }
