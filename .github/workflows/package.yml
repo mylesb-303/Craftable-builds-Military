@@ -42,6 +42,8 @@ jobs:
           grep -q "failures=0" result.txt
           ! grep -q "FAIL" result.txt
           node dircheck.mjs | grep -q PASS
+          node snapcheck.mjs | grep -q "SNAP PASS"
+          node chunkcheck.mjs
           for b in small_nuclear_bunker medium_nuclear_bunker large_nuclear_bunker strategic_operations_bunker; do
             node inspect.mjs $b | tee walk.txt
             grep -q "FLOORS OK" walk.txt
@@ -53,7 +55,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.5.0_Bunkers_Radars_Super_Hangar.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.6.0_Airfield_Dishes_ChunkLoading.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -66,5 +68,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.5.0-Bunkers-Radars-Super-Hangar
-          path: dist/Cavira_Craftable_Builds_1.5.0_Bunkers_Radars_Super_Hangar.mcaddon
+          name: Cavira-Craftable-Builds-1.6.0-Airfield-Dishes-ChunkLoading
+          path: dist/Cavira_Craftable_Builds_1.6.0_Airfield_Dishes_ChunkLoading.mcaddon

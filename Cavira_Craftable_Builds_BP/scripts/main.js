@@ -1,5 +1,5 @@
 import { system, world } from "@minecraft/server";
-import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
+import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import {
   CATEGORIES,
   getCategory,
@@ -16,7 +16,10 @@ import {
 } from "./placement.js";
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
+import { ensureLoaded, release, cleanupLeftovers } from "./chunk_loader.js";
 import { VARIANTS, getVariant } from "./variants.js";
+import { worldDir } from "./kit.js";
+import { rotateXZ, toWorldLocation } from "./placement.js";
 import { buildGuardPost } from "./structures/guard_post.js";
 import { buildMainSecurityGate } from "./structures/main_security_gate.js";
 import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
@@ -47,16 +50,20 @@ import {
   buildHelicopterHangar,
   buildAirfieldOperationsBuilding,
   buildFuelTankFarm,
-  buildRadarRadomeFacility,
-  buildHelicopterApron
+  buildRadarRadomeFacility
 } from "./structures/airforce_expansion.js";
+import { buildHelicopterApron } from "./structures/airforce_expansion.js";
 import {
-  buildRunwayStraight,
-  buildRunwayThreshold,
-  buildTaxiwayStraight,
-  buildTaxiwayCorner,
-  buildAircraftApron
-} from "./structures/runway_modules.js";
+  buildRunwayStraightV2,
+  buildRunwayTouchdownZone,
+  buildRunwayThresholdV2,
+  buildRunwayTaxiwayJunction,
+  buildTaxiwayStraightV2,
+  buildTaxiwayHoldingPoint,
+  buildTaxiwayCornerV2,
+  buildAircraftApronV2,
+  normaliseDesignator
+} from "./structures/airfield.js";
 import {
   buildNavalHeadquarters,
   buildHarbourControlTower,
@@ -94,7 +101,8 @@ import {
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
 const ACTIVE_PREVIEWS = new Map();
-const BUSY = new Map(); // playerId -> { label, fraction } while a staged job runs
+const BUSY = new Map();
+const LAST_PIECE = new Map(); // playerId -> last snappable piece // playerId -> { label, fraction } while a staged job runs
 
 function tell(player, message) {
   player.sendMessage(`§8[§bCAVIRA§8]§r ${message}`);
@@ -114,15 +122,28 @@ function removePreviewBlocks(playerId, session) {
   session.previewBlocks = [];
 }
 
-function clearPreviewById(playerId) {
+function clearPreviewById(playerId, keepArea = false) {
   const session = ACTIVE_PREVIEWS.get(playerId);
   if (!session) return;
   removePreviewBlocks(playerId, session);
   ACTIVE_PREVIEWS.delete(playerId);
+  if (!keepArea) release(session.dimension, playerId);
 }
 
 function clearActivePreview(player) {
   clearPreviewById(player.id);
+}
+
+/** Force-loads the session's build area (temporary ticking area) if needed. */
+async function loadArea(player, dimension, origin, structure, rotation) {
+  const bounds = worldBounds(origin, structure.size, rotation);
+  const name = await ensureLoaded(dimension, bounds, player.id, () =>
+    tell(player, "§7Large site — loading the whole build area, one moment…"));
+  if (name === undefined) {
+    tell(player, "§cCould not load the whole build area.§r Move a little closer to where it will stand and try again.");
+    return false;
+  }
+  return true;
 }
 
 function drawPreview(player, session) {
@@ -130,17 +151,20 @@ function drawPreview(player, session) {
   registerPreview(player.id, session.dimension, session.previewBlocks);
 }
 
-function repositionPreview(player, session) {
+async function repositionPreview(player, session) {
   removePreviewBlocks(player.id, session);
+  release(session.dimension, player.id);
   session.dimension = player.dimension;
   session.rotation = getCardinalRotation(player);
   session.origin = getPlacementOrigin(player, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1, session.structure.previewFloorY);
+  await loadArea(player, session.dimension, session.origin, session.structure, session.rotation);
   drawPreview(player, session);
 }
 
-function rotatePreview(player, session, direction) {
+async function rotatePreview(player, session, direction) {
   removePreviewBlocks(player.id, session);
   session.rotation = direction === "left" ? rotateLeft(session.rotation) : rotateRight(session.rotation);
+  await loadArea(player, session.dimension, session.origin, session.structure, session.rotation);
   drawPreview(player, session);
 }
 
@@ -162,8 +186,12 @@ async function undoLastBuild(player) {
     return;
   }
   LAST_BUILDS.delete(player.id);
+  LAST_PIECE.delete(player.id);
   BUSY.set(player.id, { label: "Restoring", fraction: 0 });
+  const snapDim = record.snapshot.dimension;
+  const g = record.snapshot.compiled;
   try {
+    await ensureLoaded(snapDim, { min: g.min, max: { x: g.min.x + g.W - 1, y: g.min.y + g.H - 1, z: g.min.z + g.D - 1 } }, player.id);
     const ok = await restoreStaged(record.snapshot, (label, fraction) => {
       BUSY.set(player.id, { label, fraction });
       try {
@@ -177,6 +205,7 @@ async function undoLastBuild(player) {
       : `§e${record.structureName} removed; some blocks were in unloaded chunks and could not be restored.`);
   } finally {
     BUSY.delete(player.id);
+    release(snapDim, player.id);
   }
 }
 
@@ -228,58 +257,124 @@ async function showVariantMenu(player, categoryId, structureId) {
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
   if (response.selection === VARIANTS.length) return showCategoryMenu(player, categoryId);
-  beginFreeLookPreview(player, categoryId, structureId, VARIANTS[response.selection].id);
+  const variantId = VARIANTS[response.selection].id;
+  let options = {};
+  if (structure.options === "designator") {
+    options = await askDesignator(player);
+    if (!options) return;
+  }
+  await beginFreeLookPreview(player, categoryId, structureId, variantId, options);
 }
 
-function beginFreeLookPreview(player, categoryId, structureId, variantId) {
+async function askDesignator(player, attempt = 0) {
+  const form = new ModalFormData()
+    .title("Runway Designator")
+    .textField("Runway number (1–99) with optional L, C or R — e.g. 09, 27L, 38R", "38R", { defaultValue: "09" });
+  const response = await form.show(player);
+  if (response.canceled) return undefined;
+  const raw = response.formValues?.[0];
+  const des = normaliseDesignator(raw);
+  if (!des) {
+    tell(player, `§c"${raw}" is not a valid designator.§r Use a number from 1 to 99, optionally followed by L, C or R.`);
+    return attempt < 2 ? askDesignator(player, attempt + 1) : undefined;
+  }
+  return { designator: `${des.number}${des.side}` };
+}
+
+async function beginFreeLookPreview(player, categoryId, structureId, variantId, options = {}) {
   clearActivePreview(player);
   const structure = getStructure(categoryId, structureId);
   const variant = getVariant(variantId);
   if (!structure) return;
   const rotation = getCardinalRotation(player);
   const origin = getPlacementOrigin(player, structure.size, rotation, structure.foundationDepth ?? 1, structure.previewFloorY);
+  if (!(await loadArea(player, player.dimension, origin, structure, rotation))) return;
   const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
   if (!validation.ok) {
     tell(player, `§cCannot preview:§r ${validation.reason}`);
     return;
   }
-  const session = { categoryId, structureId, variantId, structure, variant, origin, rotation, dimension: player.dimension, previewBlocks: [] };
+  const session = { categoryId, structureId, variantId, structure, variant, origin, rotation, dimension: player.dimension, previewBlocks: [], options };
   drawPreview(player, session);
   ACTIVE_PREVIEWS.set(player.id, session);
   tell(player, `§aPreview active: ${structure.name} (${variant.name}). §rFly or walk around freely to inspect it. Use the Construction Tablet again for placement controls.`);
 }
 
+function snapTarget(player, session, connectorName) {
+  return computeSnap(LAST_PIECE.get(player.id), session.structure, connectorName);
+}
+
+/** Pure snap maths: where `structure` must go so its `in` connector meets `last`'s connector. */
+export function computeSnap(last, structure, connectorName) {
+  const mine = structure.snap;
+  if (!last || !mine) return undefined;
+  const from = last.structure.snap?.[connectorName];
+  if (!from) return undefined;
+  // world cell just beyond the previous piece's connector, and the direction it faces
+  const p = toWorldLocation(last.origin, { x: from.x, y: 0, z: from.z }, last.structure.size, last.rotation);
+  const face = worldDir(from.dir, last.rotation);
+  const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[face];
+  const target = { x: p.x + step[0], z: p.z + step[1] };
+  const back = { north: "south", south: "north", east: "west", west: "east" }[face];
+  for (const rot of ["south", "west", "north", "east"]) {
+    if (worldDir(mine.in.dir, rot) !== back) continue;
+    const off = rotateXZ(mine.in.x, mine.in.z, structure.size.x, structure.size.z, rot);
+    const surfaceLast = last.structure.previewFloorY ?? Math.max(0, (last.structure.foundationDepth ?? 1) - 1);
+    const surfaceMine = structure.previewFloorY ?? Math.max(0, (structure.foundationDepth ?? 1) - 1);
+    return { rotation: rot, origin: { x: target.x - off.x, y: last.origin.y + surfaceLast - surfaceMine, z: target.z - off.z } };
+  }
+  return undefined;
+}
+
+async function applySnap(player, session, connectorName) {
+  const snap = snapTarget(player, session, connectorName);
+  if (!snap) {
+    tell(player, "§eNothing to snap to — build a runway, taxiway or apron piece first.");
+    return;
+  }
+  removePreviewBlocks(player.id, session);
+  release(session.dimension, player.id);
+  session.rotation = snap.rotation;
+  session.origin = snap.origin;
+  await loadArea(player, session.dimension, session.origin, session.structure, session.rotation);
+  drawPreview(player, session);
+  tell(player, "§aPreview snapped onto the end of your last piece. Inspect it, then use the tablet to construct.");
+}
+
 async function showPreviewControls(player) {
   const session = ACTIVE_PREVIEWS.get(player.id);
   if (!session) return showMainMenu(player);
+  const last = LAST_PIECE.get(player.id);
+  const canSnap = !!(session.structure.snap && last);
+  const canBranch = !!(canSnap && last.structure.snap?.branch);
+  const designator = session.options?.designator ? `\nRunway: ${session.options.designator}` : "";
   const form = new ActionFormData()
     .title(`Preview: ${session.structure.name}`)
-    .body(`Finish: ${session.variant.name}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\nFoundation depth: ${session.structure.foundationDepth ?? 1} blocks\n\nGreen marks the outer volume. Cyan cross-hatching marks the exact finished walkable floor/deck height. Yellow marks the entrance; orange marks the below-ground foundation.`)
-    .button("§aConstruct Here")
-    .button("§bReposition In Front Of Me")
-    .button("§e↶ Rotate Left")
-    .button("§e↷ Rotate Right")
-    .button("§cCancel Preview");
+    .body(`Finish: ${session.variant.name}${designator}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\nFoundation depth: ${session.structure.foundationDepth ?? 1} blocks\n\nGreen marks the outer volume. Cyan cross-hatching marks the exact finished walkable floor/deck height. Yellow marks the entrance; orange marks the below-ground foundation.`);
+  const actions = [];
+  const add = (label, fn) => { form.button(label); actions.push(fn); };
+  add("§aConstruct Here", () => constructPreview(player, session));
+  if (canSnap) add(`§dSnap to End of ${last.structure.name}`, () => applySnap(player, session, "out"));
+  if (canBranch) add(`§dSnap to Taxiway Exit of ${last.structure.name}`, () => applySnap(player, session, "branch"));
+  add("§bReposition In Front Of Me", async () => {
+    await repositionPreview(player, session);
+    tell(player, "§aPreview repositioned in front of you. Inspect it again, then use the tablet when ready.");
+  });
+  add("§e↶ Rotate Left", async () => {
+    await rotatePreview(player, session, "left");
+    tell(player, "§aPreview rotated left. Inspect it again, then use the tablet when ready.");
+  });
+  add("§e↷ Rotate Right", async () => {
+    await rotatePreview(player, session, "right");
+    tell(player, "§aPreview rotated right. Inspect it again, then use the tablet when ready.");
+  });
+  add("§cCancel Preview", () => {
+    clearActivePreview(player);
+    tell(player, "§7Placement preview cancelled and the original blocks restored.");
+  });
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-  if (response.selection === 0) return constructPreview(player, session);
-  if (response.selection === 1) {
-    repositionPreview(player, session);
-    tell(player, "§aPreview repositioned in front of you. Inspect it again, then use the tablet when ready.");
-    return;
-  }
-  if (response.selection === 2) {
-    rotatePreview(player, session, "left");
-    tell(player, "§aPreview rotated left. Inspect it again, then use the tablet when ready.");
-    return;
-  }
-  if (response.selection === 3) {
-    rotatePreview(player, session, "right");
-    tell(player, "§aPreview rotated right. Inspect it again, then use the tablet when ready.");
-    return;
-  }
-  clearActivePreview(player);
-  tell(player, "§7Placement preview cancelled and the original blocks restored.");
+  return actions[response.selection]?.();
 }
 
 async function constructPreview(player, session) {
@@ -290,7 +385,9 @@ async function constructPreview(player, session) {
     return;
   }
   // Remove the preview markers first so the snapshot records the real terrain.
-  clearActivePreview(player);
+  // The temporary chunk-loading area stays until construction finishes.
+  clearPreviewById(player.id, true);
+  if (!(await loadArea(player, dimension, session.origin, session.structure, session.rotation))) return;
   const { structure, origin, rotation, variantId, variant } = session;
   BUSY.set(player.id, { label: "Preparing", fraction: 0 });
   tell(player, `§7Constructing ${structure.name}… large builds are spread over several seconds to keep the game smooth.`);
@@ -311,13 +408,14 @@ async function constructPreview(player, session) {
       if (structure.placementMode !== "overlay" && structure.placementMode !== "excavation") {
         clearVolume(recorder, origin, structure.size, rotation);
       }
-      runBuilder(structure.id, recorder, origin, rotation, variantId);
+      runBuilder(structure.id, recorder, origin, rotation, variantId, session.options ?? {});
     }, onProgress, worldBounds(origin, structure.size, rotation));
     if (!result.ok) {
       tell(player, `§cConstruction cancelled:§r ${result.reason}`);
       return;
     }
     LAST_BUILDS.set(player.id, { snapshot: result.snapshot, structureName: structure.name, variantName: variant.name });
+    if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
     tell(player, `§a${structure.name} deployed in ${variant.name}. §7(${result.changed} blocks placed — use the tablet to undo it if needed.)`);
     try {
       player.onScreenDisplay.setActionBar(`§a${structure.name} complete`);
@@ -329,10 +427,11 @@ async function constructPreview(player, session) {
     tell(player, "§cConstruction failed. Check the content log.");
   } finally {
     BUSY.delete(player.id);
+    release(dimension, player.id);
   }
 }
 
-export function runBuilder(structureId, dimension, origin, rotation, variantId) {
+export function runBuilder(structureId, dimension, origin, rotation, variantId, options = {}) {
   switch (structureId) {
     case "guard_post":
       buildGuardPost(dimension, origin, rotation, variantId);
@@ -440,19 +539,28 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId) 
       buildFuelTankFarm(dimension, origin, rotation, variantId);
       break;
     case "runway_threshold":
-      buildRunwayThreshold(dimension, origin, rotation, variantId);
+      buildRunwayThresholdV2(dimension, origin, rotation, variantId, options);
       break;
     case "runway_straight":
-      buildRunwayStraight(dimension, origin, rotation, variantId);
+      buildRunwayStraightV2(dimension, origin, rotation, variantId);
+      break;
+    case "runway_touchdown_zone":
+      buildRunwayTouchdownZone(dimension, origin, rotation, variantId);
+      break;
+    case "runway_taxiway_junction":
+      buildRunwayTaxiwayJunction(dimension, origin, rotation, variantId);
+      break;
+    case "taxiway_holding_point":
+      buildTaxiwayHoldingPoint(dimension, origin, rotation, variantId);
       break;
     case "taxiway_straight":
-      buildTaxiwayStraight(dimension, origin, rotation, variantId);
+      buildTaxiwayStraightV2(dimension, origin, rotation, variantId);
       break;
     case "taxiway_corner":
-      buildTaxiwayCorner(dimension, origin, rotation, variantId);
+      buildTaxiwayCornerV2(dimension, origin, rotation, variantId);
       break;
     case "aircraft_apron":
-      buildAircraftApron(dimension, origin, rotation, variantId);
+      buildAircraftApronV2(dimension, origin, rotation, variantId);
       break;
     case "helicopter_apron":
       buildHelicopterApron(dimension, origin, rotation, variantId);
@@ -547,6 +655,8 @@ world.afterEvents.itemUse.subscribe((event) => {
     });
   });
 });
+
+world.afterEvents.worldLoad.subscribe(() => cleanupLeftovers());
 
 installPreviewGuard((playerId) => {
   clearPreviewById(playerId);

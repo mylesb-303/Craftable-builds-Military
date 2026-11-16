@@ -6,7 +6,7 @@ COL = {"air":None,"obsidian":(30,18,48),"polished_deepslate":(70,70,75),"deepsla
 "polished_blackstone_stairs":(45,40,48),"yellow_concrete":(240,175,20),"red_concrete":(160,30,30),"white_concrete":(225,228,230),"quartz_block":(235,230,225),"brewing_stand":(120,100,80),
 "green_terracotta":(75,85,40),"orange_terracotta":(160,85,40),"barrel":(125,90,50),"spruce_planks":(115,85,50),"spruce_stairs":(115,85,50),"dark_oak_planks":(65,45,25),"scaffolding":(200,170,90),
 "ladder":(160,125,70),"glass":(200,230,240),"grass_block":(90,150,60),"dirt":(130,95,65),"stone":(120,120,120),"blast_furnace":(90,90,95),"ochre_froglight":(240,210,120),"polished_basalt":(90,90,95),
-"cauldron":(60,60,65),"smoker":(85,75,65),"furnace":(100,100,100),"tinted_glass":(40,35,50),"gray_concrete":(55,58,62),"light_gray_concrete":(125,125,115),"stone_bricks":(122,122,122),"blue_concrete":(45,45,145)}
+"cauldron":(60,60,65),"smoker":(85,75,65),"furnace":(100,100,100),"tinted_glass":(40,35,50),"gray_concrete":(55,58,62),"light_gray_concrete":(125,125,115),"stone_bricks":(122,122,122),"blue_concrete":(45,45,145),"bamboo_fence":(215,190,60),"polished_deepslate_stairs":(70,70,75),"light_blue_concrete":(60,170,215),"green_concrete":(75,95,35),"redstone_lamp":(150,80,40),"verdant_froglight":(200,230,150)}
 def colour(name):
     n=name.split(":")[-1]
     if n in COL: return COL[n]

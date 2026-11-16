@@ -40,16 +40,16 @@ function dishOnMount(c, o) {
   const n = aimAxis(tilt, o.toward ?? "south", o.yaw ?? 0);
   const lift = Math.ceil(R * Math.sin((tilt * Math.PI) / 180)) + 2 + (o.extraLift ?? Math.round(R / 4));
   const v = { x: cx, y: baseY + lift, z: cz };
-  // yoke column and turntable
+  // turntable, charcoal yoke column with cyan light strip, yellow-banded bearings, cable pipes
   c.cyl(cx, cz, baseY, baseY, Math.max(2, Math.round(R / 4)), c.B.tile);
-  c.fill(cx - 1, baseY, cz - 1, cx + 1, v.y - 2, cz + 1, c.B.blackstoneBricks);
-  c.set(cx, v.y - 3, cz + 1, c.B.sea);
-  // elevation bearing housings either side
-  c.fill(cx - 2, v.y - 3, cz - 1, cx - 2, v.y - 1, cz + 1, c.B.concrete);
-  c.fill(cx + 2, v.y - 3, cz - 1, cx + 2, v.y - 1, cz + 1, c.B.concrete);
-  c.set(cx - 2, v.y - 2, cz, c.B.yellow);
-  c.set(cx + 2, v.y - 2, cz, c.B.yellow);
-  parabolicDish(c, { v, n, R, depth: o.depth ?? R * 0.32, back: c.B.tile, rimLight: o.rimLight ?? c.B.tile, rim: o.rim ?? c.B.concrete });
+  c.cyl(cx, cz, baseY + 1, baseY + 1, Math.max(2, Math.round(R / 4)) - 1, c.B.blackstoneBricks);
+  c.fill(cx - 1, baseY + 1, cz - 1, cx + 1, v.y - 2, cz + 1, c.B.blackstoneBricks);
+  for (let y = baseY + 2; y <= v.y - 3; y++) c.set(cx, y, cz + 1, (y - baseY) % 3 === 0 ? c.B.tile : c.B.sea);
+  c.fill(cx + 1, baseY + 1, cz + 2, cx + 1, v.y - 3, cz + 2, c.B.basalt);
+  c.fill(cx - 2, v.y - 3, cz - 1, cx - 2, v.y - 1, cz + 1, c.B.tile);
+  c.fill(cx + 2, v.y - 3, cz - 1, cx + 2, v.y - 1, cz + 1, c.B.tile);
+  for (const sx of [cx - 2, cx + 2]) { c.set(sx, v.y - 2, cz, c.B.yellow); c.set(sx, v.y - 2, cz + 1, c.B.black); c.set(sx, v.y - 2, cz - 1, c.B.black); }
+  parabolicDish(c, { v, n, R, depth: o.depth ?? R * 0.32, back: c.B.blackstoneBricks, rimLight: o.rimLight ?? c.B.yellow, rim: o.rim ?? c.B.blackstoneBricks, rimLightEvery: o.rimLightEvery });
   return v;
 }
 
@@ -179,9 +179,8 @@ export function buildMediumSatelliteDishStation(dimension, origin, rotation, var
   });
   // rooftop drum with yellow walkway ring and access stair
   const top = tieredPlinth(c, 17, 15, b.top + 1, [{ r: 6, h: 2, block: c.B.concrete, rail: true, railR: 6 }, { r: 4, h: 2, block: c.B.tile, lights: 8 }]);
-  for (let k = 0; k < 64; k++) { const a = (k / 64) * Math.PI * 2; c.set(Math.round(17 + Math.cos(a) * 6), b.top + 2, Math.round(15 + Math.sin(a) * 6), c.B.yellow); }
   c.fill(23, b.top + 1, 15, 24, b.top + 2, 15, c.B.concrete);
-  dishOnMount(c, { cx: 17, cz: 15, baseY: top + 1, R: 11, tilt: 45, toward: "south", yaw: -30, rimLight: c.B.yellow });
+  dishOnMount(c, { cx: 17, cz: 15, baseY: top + 1, R: 11, tilt: 45, toward: "south", yaw: -30 });
   // ground plant
   c.fill(30, WALK, 8, 32, WALK + 2, 12, c.B.lightGrey);
   c.set(31, WALK + 1, 12, c.B.bars);
@@ -205,7 +204,7 @@ export function buildLargeStrategicSatelliteArray(dimension, origin, rotation, v
   });
   // main dish on a tall plinth
   const mainTop = tieredPlinth(c, 28, 27, b.top + 1, [{ r: 8, h: 2, block: c.B.tile, rail: true, railR: 8, lights: 12 }, { r: 5, h: 3, block: c.B.blackstoneBricks, lights: 8 }]);
-  dishOnMount(c, { cx: 28, cz: 27, baseY: mainTop + 1, R: 15, tilt: 38, toward: "south", rimLight: c.B.froglight });
+  dishOnMount(c, { cx: 28, cz: 27, baseY: mainTop + 1, R: 15, tilt: 38, toward: "south", rimLight: c.B.froglight, rimLightEvery: 4 });
   // two auxiliary dish towers
   for (const [tx, yaw] of [[8, 35], [48, -35]]) {
     c.fill(tx - 3, WALK - 1, 22, tx + 3, WALK + 13, 28, c.B.tile);
@@ -230,7 +229,7 @@ export function buildStandaloneSmallSatelliteDish(dimension, origin, rotation, v
   const { c, size } = ctx("standalone_small_satellite_dish", dimension, origin, rotation, variantId);
   c.fill(1, WALK - 1, 1, size.x - 2, WALK - 1, size.z - 2, c.B.smooth);
   c.walls(1, WALK - 1, 1, size.x - 2, WALK - 1, size.z - 2, c.B.andesite);
-  for (const [x, z] of [[2, 2], [size.x - 3, 2], [2, size.z - 3], [size.x - 3, size.z - 3]]) { c.set(x, WALK, z, c.B.blackstoneBricks); c.set(x, WALK + 1, z, c.B.sea); }
+  for (const [x, z] of [[2, 2], [size.x - 3, 2], [2, size.z - 3], [size.x - 3, size.z - 3]]) { c.set(x, WALK, z, c.B.yellow); c.set(x, WALK + 1, z, c.B.blackstoneBricks); c.set(x, WALK + 2, z, c.B.sea); }
   hazardBorder(c, 4, WALK - 1, 4, size.x - 5, size.z - 5);
   // stepped dark pedestal with pipes
   c.fill(5, WALK, 5, 11, WALK + 1, 11, c.B.andesite);
@@ -239,7 +238,7 @@ export function buildStandaloneSmallSatelliteDish(dimension, origin, rotation, v
   for (const [x, z] of [[6, 11], [10, 11]]) c.fill(x, WALK, z + 1, x, WALK + 4, z + 1, c.B.basalt);
   // maintenance ladder & railed platform
   c.fill(11, WALK + 5, 7, 13, WALK + 5, 9, c.B.andesite);
-  for (const [x, z] of [[13, 7], [13, 8], [13, 9], [12, 7], [12, 9]]) c.set(x, WALK + 6, z, c.B.bars);
+  for (const [x, z] of [[13, 7], [13, 8], [13, 9], [12, 7], [12, 9]]) c.set(x, WALK + 6, z, c.B.rail);
   for (let y = WALK; y <= WALK + 5; y++) c.set(12, y, 10, c.ladder("south"));
   c.fill(12, WALK, 11, 12, WALK + 5, 11, c.B.tile);
   dishOnMount(c, { cx: 8, cz: 8, baseY: WALK + 8, R: 6, tilt: 40, toward: "south", yaw: 30 });
@@ -255,7 +254,6 @@ export function buildStandaloneMediumSatelliteDish(dimension, origin, rotation, 
     { r: 9, h: 1, block: c.B.tile, rail: true, railR: 9 }
   ]);
   // yellow handrail tops
-  for (let k = 0; k < 64; k++) { const a = (k / 64) * Math.PI * 2; c.set(Math.round(cx + Math.cos(a) * 9), top + 2, Math.round(cz + Math.sin(a) * 9), c.B.yellow); }
   externalStairs(c, cx + 3, cz + 11, "north", WALK, top - WALK + 1, 2);
   c.clear(cx + 3, top + 1, cz + 9, cx + 4, top + 2, cz + 9);
   // access door into the plinth
@@ -264,7 +262,7 @@ export function buildStandaloneMediumSatelliteDish(dimension, origin, rotation, 
   c.set(cx, WALK, cz + 5, c.B.blackstone); c.set(cx, WALK + 1, cz + 5, c.B.daylight);
   // central tapered column
   c.fill(cx - 2, top + 1, cz - 2, cx + 2, top + 3, cz + 2, c.B.tile);
-  dishOnMount(c, { cx, cz, baseY: top + 4, R: 11, tilt: 42, toward: "south", yaw: 30, rimLight: c.B.tile });
+  dishOnMount(c, { cx, cz, baseY: top + 4, R: 11, tilt: 42, toward: "south", yaw: 30 });
 }
 
 export function buildStandaloneLargeSatelliteDish(dimension, origin, rotation, variantId) {
@@ -281,5 +279,5 @@ export function buildStandaloneLargeSatelliteDish(dimension, origin, rotation, v
   externalStairs(c, cx - 7, cz + 13, "north", WALK + 6, 4, 2);
   // amber rim lights and A-frame legs
   for (const dx of [-5, 5]) c.line(cx + dx, top, cz + 3, cx + Math.sign(dx), top + 9, cz, c.B.blackstoneBricks);
-  dishOnMount(c, { cx, cz, baseY: top + 1, R: 17, tilt: 36, toward: "south", yaw: -20, rimLight: c.B.froglight });
+  dishOnMount(c, { cx, cz, baseY: top + 1, R: 17, tilt: 36, toward: "south", yaw: -20, rim: c.B.lightGrey, rimLight: c.B.froglight, rimLightEvery: 3 });
 }

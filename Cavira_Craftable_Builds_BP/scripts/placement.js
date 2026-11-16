@@ -104,7 +104,7 @@ export function validatePlacement(dimension, origin, size, rotation) {
     for (const z of zs) {
       const loc = toWorldLocation(origin, { x, y: 0, z }, size, rotation);
       if (!dimension.getBlock(loc)) {
-        return { ok: false, reason: "Part of the build area is in an unloaded chunk. Move closer to the centre of the site and reposition." };
+        return { ok: false, reason: "Part of the build area could not be loaded. Move a little closer to where it will stand and reposition." };
       }
     }
   }

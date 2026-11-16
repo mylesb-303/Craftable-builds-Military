@@ -124,6 +124,7 @@ const ID = {
   hopper: "minecraft:hopper",
   ironTrapdoor: "minecraft:iron_trapdoor",
   fence: "minecraft:nether_brick_fence",
+  rail: "minecraft:bamboo_fence",
   plate: "minecraft:heavy_weighted_pressure_plate",
   lightPlate: "minecraft:light_weighted_pressure_plate",
   moss: "minecraft:moss_block",
@@ -407,8 +408,9 @@ export function parabolicDish(c, o) {
   const thick = o.thickness ?? 0.75;
   const surface = o.surface ?? c.B.white;
   const seam = o.seam ?? c.B.lightGrey;
-  const rim = o.rim ?? c.B.tile;
+  const rim = o.rim ?? c.B.blackstoneBricks;
   const rimLight = o.rimLight ?? c.B.yellow;
+  const rimLightEvery = o.rimLightEvery ?? 6; // yellow clamp brackets every n of 48 rim segments
   // orthonormal frame
   const ref = Math.abs(n.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
   const e1 = norm(cross(n, ref));
@@ -427,20 +429,23 @@ export function parabolicDish(c, o) {
         const target = (r * r) / (4 * f);
         const off = u - target;
         let block;
-        if (r > R - 0.9 && off > -1.4 && off < 1.0) block = (Math.round(Math.atan2(b, a) * 8 / Math.PI) % 2 === 0) ? rimLight : rim;
+        if (r > R - 0.9 && off > -1.4 && off < 1.0) {
+          const seg = Math.round(((Math.atan2(b, a) + Math.PI) / (2 * Math.PI)) * 48);
+          block = seg % rimLightEvery === 0 ? rimLight : rim;
+        }
         else if (r <= R - 0.9 && Math.abs(off) <= thick) {
           const ang = Math.atan2(b, a);
           const seamRadial = Math.abs(Math.sin(ang * 4)) < 0.12 && r > 2;
           const ring = Math.abs(r - R * 0.55) < 0.5;
           block = seamRadial || ring ? seam : surface;
-        } else if (o.back && off < -thick && off > -thick - 1.1 && r < R * 0.45) block = o.back;
+        } else if (o.back && off < -thick && off > -thick - 1.1 && (r < R * 0.35 || (r < R - 1 && Math.abs(Math.sin(Math.atan2(b, a) * 3)) < 0.18))) block = o.back;
         if (block) c.set(Math.round(v.x + dx), Math.round(v.y + dy), Math.round(v.z + dz), block);
       }
     }
   }
   // Feed horn on a three-legged tripod.
   const focus = { x: v.x + n.x * f * 0.85, y: v.y + n.y * f * 0.85, z: v.z + n.z * f * 0.85 };
-  const strut = o.strut ?? c.B.blackstone;
+  const strut = o.strut ?? c.B.blackstoneBricks;
   for (let k = 0; k < 3; k++) {
     const ang = (k * 2 * Math.PI) / 3 + 0.4;
     const rr = R * 0.82;
@@ -452,11 +457,14 @@ export function parabolicDish(c, o) {
       z: v.z + e1.z * pa + e2.z * pb + n.z * ((rr * rr) / (4 * f) + 0.6)
     };
     c.line(Math.round(base.x), Math.round(base.y), Math.round(base.z), Math.round(focus.x), Math.round(focus.y), Math.round(focus.z), strut);
+    c.set(Math.round(base.x), Math.round(base.y), Math.round(base.z), c.B.yellow);
   }
   const fx = Math.round(focus.x), fy = Math.round(focus.y), fz = Math.round(focus.z);
-  c.fill(fx - 1, fy - 1, fz - 1, fx + 1, fy + 1, fz + 1, c.B.tile);
+  c.fill(fx - 1, fy - 1, fz - 1, fx + 1, fy + 1, fz + 1, c.B.blackstoneBricks);
   c.set(fx, fy, fz, c.B.sea);
   for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]]) c.set(fx + dx, fy + dy, fz + dz, c.B.sea);
+  // receiver face toward the reflector glows cyan
+  c.set(Math.round(fx - n.x), Math.round(fy - n.y), Math.round(fz - n.z), c.B.sea);
   c.set(fx, fy + 1, fz, c.B.bars);
   c.set(fx, fy + 2, fz, c.B.red);
   return { vertex: v, focus };

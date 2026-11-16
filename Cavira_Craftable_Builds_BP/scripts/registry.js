@@ -1,3 +1,4 @@
+import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { SUPER_HANGAR_SIZE } from "./structures/super_hangar.js";
 import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
 import { BUNKER_SPECS, bunkerSize } from "./structures/bunkers.js";
@@ -6,6 +7,7 @@ export const CATEGORIES = [
   { id: "core", name: "Core Base & HQ", icon: "§7■" },
   { id: "army", name: "Army", icon: "§2★" },
   { id: "air_force", name: "Air Force", icon: "§b✈" },
+  { id: "airfield", name: "Runways & Taxiways", icon: "§e═" },
   { id: "navy", name: "Navy", icon: "§9⚓" },
   { id: "bunkers", name: "Bunkers", icon: "§5⬛" },
   { id: "strategic", name: "Strategic / Joint", icon: "§6◆" },
@@ -14,6 +16,53 @@ export const CATEGORIES = [
 ];
 
 export const STRUCTURES = {
+  airfield: [
+    {
+      id: "runway_threshold", name: "Runway Threshold & Designator",
+      description: "Blast pad with yellow chevrons and approach lights, green threshold bar, piano keys and your runway number (e.g. 38R).",
+      size: AIRFIELD_SIZES.runway_threshold, foundationDepth: 2, snap: AIRFIELD_SNAP.runway_threshold, options: "designator"
+    },
+    {
+      id: "runway_touchdown_zone", name: "Runway Touchdown Zone",
+      description: "64-block runway section with touchdown bars, aiming-point blocks, centreline lights and edge lamps.",
+      size: AIRFIELD_SIZES.runway_touchdown_zone, foundationDepth: 2, snap: AIRFIELD_SNAP.runway_touchdown_zone
+    },
+    {
+      id: "runway_straight", name: "Runway Straight",
+      description: "64-block runway section: speckled asphalt, white edge lines, shoulders with edge lamps, lit centreline.",
+      size: AIRFIELD_SIZES.runway_straight, foundationDepth: 2, snap: AIRFIELD_SNAP.runway_straight
+    },
+    {
+      id: "runway_taxiway_junction", name: "Runway / Taxiway Junction",
+      description: "Runway section with a taxiway exit, widened fillet, curved yellow lead-off lines both ways and a holding point.",
+      size: AIRFIELD_SIZES.runway_taxiway_junction, foundationDepth: 2, snap: AIRFIELD_SNAP.runway_taxiway_junction
+    },
+    {
+      id: "taxiway_straight", name: "Taxiway Straight",
+      description: "32-block taxiway with yellow centreline lights, white edges and shoulders.",
+      size: AIRFIELD_SIZES.taxiway_straight, foundationDepth: 2, snap: AIRFIELD_SNAP.taxiway_straight
+    },
+    {
+      id: "taxiway_holding_point", name: "Taxiway Holding Point",
+      description: "Taxiway section with runway-holding markings, a red stop bar and a sign board.",
+      size: AIRFIELD_SIZES.taxiway_holding_point, foundationDepth: 2, snap: AIRFIELD_SNAP.taxiway_holding_point
+    },
+    {
+      id: "taxiway_corner", name: "Taxiway Curve (90°)",
+      description: "Smooth 90° taxiway curve with lit yellow centreline. Snaps onto straights; place it facing the other way for a left turn.",
+      size: AIRFIELD_SIZES.taxiway_corner, foundationDepth: 2, snap: AIRFIELD_SNAP.taxiway_corner
+    },
+    {
+      id: "aircraft_apron", name: "Aircraft Parking Apron",
+      description: "Three-stand apron with lit taxilane, curved lead-in lines, stop bars, safety boxes and floodlights.",
+      size: AIRFIELD_SIZES.aircraft_apron, foundationDepth: 2, snap: AIRFIELD_SNAP.aircraft_apron
+    },
+    {
+      id: "helicopter_apron", name: "Four-Pad Helicopter Apron",
+      description: "Large flight-line apron with four illuminated helicopter landing and parking positions.",
+      size: { x: 41, y: 3, z: 41 }, foundationDepth: 1
+    }
+  ],
   core: [
     {
       id: "guard_post", name: "Guard Post",
@@ -319,36 +368,6 @@ export const STRUCTURES = {
     }
   ],
   modular: [
-    {
-      id: "runway_threshold", name: "Runway Threshold",
-      description: "Wide illuminated runway threshold module with centreline and threshold bars.",
-      size: { x: 21, y: 3, z: 21 }, foundationDepth: 1
-    },
-    {
-      id: "runway_straight", name: "Runway Straight",
-      description: "Forty-one-block runway extension with centreline and edge lighting.",
-      size: { x: 21, y: 3, z: 41 }, foundationDepth: 1
-    },
-    {
-      id: "taxiway_straight", name: "Taxiway Straight",
-      description: "Illuminated taxiway module with a continuous yellow centreline.",
-      size: { x: 13, y: 3, z: 31 }, foundationDepth: 1
-    },
-    {
-      id: "taxiway_corner", name: "Taxiway Corner",
-      description: "Ninety-degree taxiway corner for modular airfield routing.",
-      size: { x: 21, y: 3, z: 21 }, foundationDepth: 1
-    },
-    {
-      id: "aircraft_apron", name: "Aircraft Parking Apron",
-      description: "Large illuminated fixed-wing apron with three parking guide lanes.",
-      size: { x: 31, y: 3, z: 31 }, foundationDepth: 1
-    },
-    {
-      id: "helicopter_apron", name: "Four-Pad Helicopter Apron",
-      description: "Large flight-line apron with four illuminated helicopter landing and parking positions.",
-      size: { x: 41, y: 3, z: 41 }, foundationDepth: 1
-    }
   ]
 };
 

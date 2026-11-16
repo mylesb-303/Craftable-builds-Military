@@ -72,8 +72,8 @@ export function opsBuilding(c, o) {
     }
   }
   if (o.roofDeck) {
-    for (let x = x1; x <= x2; x++) for (const z of [z1, z2]) c.set(x, top, z, c.B.bars);
-    for (let z = z1; z <= z2; z++) for (const x of [x1, x2]) c.set(x, top, z, c.B.bars);
+    for (let x = x1; x <= x2; x++) for (const z of [z1, z2]) c.set(x, top, z, c.B.rail);
+    for (let z = z1; z <= z2; z++) for (const x of [x1, x2]) c.set(x, top, z, c.B.rail);
   }
   return { top, doorX };
 }
@@ -128,7 +128,7 @@ export function tieredPlinth(c, cx, cz, walk, tiers) {
       const r = t.railR ?? t.r;
       for (let k = 0; k < 64; k++) {
         const a = (k / 64) * Math.PI * 2;
-        c.set(Math.round(cx + Math.cos(a) * r), y + 1, Math.round(cz + Math.sin(a) * r), c.B.bars);
+        c.set(Math.round(cx + Math.cos(a) * r), y + 1, Math.round(cz + Math.sin(a) * r), t.railBlock ?? c.B.rail);
       }
     }
   }
@@ -136,7 +136,7 @@ export function tieredPlinth(c, cx, cz, walk, tiers) {
 }
 
 /** Outer staircase climbing a plinth along a straight line (gap in rails). */
-export function externalStairs(c, x, z, up, walk, rise, width = 2, stairId = "minecraft:stone_brick_stairs") {
+export function externalStairs(c, x, z, up, walk, rise, width = 2, stairId = "minecraft:polished_deepslate_stairs") {
   const d = DIRS[up];
   const side = DIRS[{ north: "east", south: "west", east: "south", west: "north" }[up]];
   for (let i = 0; i < rise; i++) {
@@ -145,11 +145,11 @@ export function externalStairs(c, x, z, up, walk, rise, width = 2, stairId = "mi
       const sz = z + d.z * i + side.z * k;
       c.set(sx, walk + i, sz, c.stairs(stairId, up));
       c.clear(sx, walk + i + 1, sz, sx, walk + i + 3, sz);
-      for (let yy = walk - 1; yy < walk + i; yy++) c.set(sx, yy, sz, c.B.stoneBrick);
+      for (let yy = walk - 1; yy < walk + i; yy++) c.set(sx, yy, sz, c.B.tile);
     }
-    // outer handrail
-    c.set(x + d.x * i - side.x, walk + i + 1, z + d.z * i - side.z, c.B.bars);
-    c.set(x + d.x * i + side.x * width, walk + i + 1, z + d.z * i + side.z * width, c.B.bars);
+    // yellow handrails
+    c.set(x + d.x * i - side.x, walk + i + 1, z + d.z * i - side.z, c.B.rail);
+    c.set(x + d.x * i + side.x * width, walk + i + 1, z + d.z * i + side.z * width, c.B.rail);
   }
   return { x: x + d.x * rise, z: z + d.z * rise };
 }
