@@ -82,13 +82,29 @@ export function getPlacementOrigin(player, size, rotation, foundationDepth = 1, 
 }
 
 export function validatePlacement(dimension, origin, size, rotation) {
-  for (let x = 0; x < size.x; x++) {
-    for (let y = 0; y < size.y; y++) {
-      for (let z = 0; z < size.z; z++) {
-        const loc = toWorldLocation(origin, { x, y, z }, size, rotation);
-        if (!dimension.getBlock(loc)) {
-          return { ok: false, reason: "Part of the build volume is outside loaded or valid world space." };
-        }
+  // Cheap chunk-level check (v1.4.1). The old version read every block of the
+  // volume in one tick (up to ~89k reads). The staged engine still verifies
+  // every block it actually touches before changing anything.
+  try {
+    const range = dimension.heightRange;
+    if (origin.y < range.min || origin.y + size.y - 1 >= range.max) {
+      return { ok: false, reason: `The build would extend outside the world height (${range.min} to ${range.max - 1}). Move up or down and reposition.` };
+    }
+  } catch {
+    // heightRange unavailable — rely on the loaded-chunk samples below.
+  }
+  const step = 8;
+  const xs = [];
+  const zs = [];
+  for (let x = 0; x < size.x; x += step) xs.push(x);
+  if (xs[xs.length - 1] !== size.x - 1) xs.push(size.x - 1);
+  for (let z = 0; z < size.z; z += step) zs.push(z);
+  if (zs[zs.length - 1] !== size.z - 1) zs.push(size.z - 1);
+  for (const x of xs) {
+    for (const z of zs) {
+      const loc = toWorldLocation(origin, { x, y: 0, z }, size, rotation);
+      if (!dimension.getBlock(loc)) {
+        return { ok: false, reason: "Part of the build area is in an unloaded chunk. Move closer to the centre of the site and reposition." };
       }
     }
   }

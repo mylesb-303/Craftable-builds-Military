@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "codex/**"
+      - "claude/**"
 
 jobs:
   package:
@@ -32,13 +33,22 @@ jobs:
         run: |
           find Cavira_Craftable_Builds_BP/scripts -name '*.js' -print0 | xargs -0 -n1 node --check
 
+      - name: Run engine regression harness
+        run: |
+          rm -rf tools/engine-harness/scripts
+          cp -r Cavira_Craftable_Builds_BP/scripts tools/engine-harness/scripts
+          cd tools/engine-harness
+          node test.mjs | tee result.txt
+          grep -q "failures=0" result.txt
+          ! grep -q "FAIL" result.txt
+
       - name: Build mcaddon
         run: |
           mkdir -p dist
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.4.0_Placement_Interior_Overhaul.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.4.1_Staged_Construction.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -51,5 +61,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.4.0-Placement-Interior-Overhaul
-          path: dist/Cavira_Craftable_Builds_1.4.0_Placement_Interior_Overhaul.mcaddon
+          name: Cavira-Craftable-Builds-1.4.1-Staged-Construction
+          path: dist/Cavira_Craftable_Builds_1.4.1_Staged_Construction.mcaddon
