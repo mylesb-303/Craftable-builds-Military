@@ -14,7 +14,7 @@ import {
   showFootprintPreview,
   validatePlacement
 } from "./placement.js";
-import { constructStaged, restoreStaged } from "./construction_engine.js";
+import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { VARIANTS, getVariant } from "./variants.js";
 import { buildGuardPost } from "./structures/guard_post.js";
@@ -31,6 +31,7 @@ import {
   buildArmyPerimeterWall
 } from "./structures/army_expansion.js";
 import { buildWatchTower } from "./structures/watch_tower.js";
+import { buildSuperHeavyAircraftHangar } from "./structures/super_hangar.js";
 import { buildAirTrafficControlTower } from "./structures/air_traffic_control_tower.js";
 import {
   buildHQAdministrationWing,
@@ -77,7 +78,7 @@ import {
   buildMediumNuclearBunker,
   buildLargeNuclearBunker,
   buildStrategicOperationsBunker
-} from "./structures/bunker_expansion.js";
+} from "./structures/bunkers.js";
 import {
   buildSmallTacticalRadarPost,
   buildMediumRadarStation,
@@ -88,7 +89,7 @@ import {
   buildStandaloneSmallSatelliteDish,
   buildStandaloneMediumSatelliteDish,
   buildStandaloneLargeSatelliteDish
-} from "./structures/strategic_expansion.js";
+} from "./structures/strategic_v2.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -311,7 +312,7 @@ async function constructPreview(player, session) {
         clearVolume(recorder, origin, structure.size, rotation);
       }
       runBuilder(structure.id, recorder, origin, rotation, variantId);
-    }, onProgress);
+    }, onProgress, worldBounds(origin, structure.size, rotation));
     if (!result.ok) {
       tell(player, `§cConstruction cancelled:§r ${result.reason}`);
       return;
@@ -380,6 +381,9 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId) 
       break;
     case "heavy_vehicle_maintenance_hangar":
       buildHeavyVehicleMaintenanceHangar(dimension, origin, rotation, variantId);
+      break;
+    case "super_heavy_aircraft_hangar":
+      buildSuperHeavyAircraftHangar(dimension, origin, rotation, variantId);
       break;
     case "watch_tower":
       buildWatchTower(dimension, origin, rotation, variantId);

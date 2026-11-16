@@ -1,3 +1,7 @@
+import { SUPER_HANGAR_SIZE } from "./structures/super_hangar.js";
+import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
+import { BUNKER_SPECS, bunkerSize } from "./structures/bunkers.js";
+
 export const CATEGORIES = [
   { id: "core", name: "Core Base & HQ", icon: "§7■" },
   { id: "army", name: "Army", icon: "§2★" },
@@ -90,6 +94,11 @@ export const STRUCTURES = {
     }
   ],
   air_force: [
+    {
+      id: "super_heavy_aircraft_hangar", name: "Super-Heavy Aircraft Hangar",
+      description: "81 × 101 × 37 strategic bomber hangar with arched roof, 65-wide door, two-storey maintenance bays, raised control room and apron. Fits a B-52 or B-2.",
+      size: SUPER_HANGAR_SIZE, foundationDepth: 2
+    },
     {
       id: "large_aircraft_hangar", name: "Heavy Aircraft Hangar",
       description: "Large curved-roof hangar with a 29-block clear entrance, workshops and parking clearance for Airforce aircraft.",
@@ -227,39 +236,39 @@ export const STRUCTURES = {
     {
       id: "small_nuclear_bunker", name: "Small Nuclear Bunker",
       description: "Deep compact four-person survival bunker with command post, stores, power, filtration and escape shaft inside an obsidian outer frame.",
-      size: { x: 23, y: 20, z: 19 }, foundationDepth: 18, placementMode: "excavation"
+      ...bunkerSize(BUNKER_SPECS.small_nuclear_bunker), placementMode: "excavation"
     },
     {
       id: "medium_nuclear_bunker", name: "Medium Nuclear Bunker",
       description: "Deep twelve-person operational bunker with medical, barracks, command, storage, utilities and redundant escape access.",
-      size: { x: 31, y: 25, z: 25 }, foundationDepth: 23, placementMode: "excavation"
+      ...bunkerSize(BUNKER_SPECS.medium_nuclear_bunker), placementMode: "excavation"
     },
     {
       id: "large_nuclear_bunker", name: "Large Nuclear Bunker",
       description: "Multi-level hardened bunker for roughly thirty occupants with operations, accommodation, medical and engineering floors.",
-      size: { x: 41, y: 31, z: 33 }, foundationDepth: 29, placementMode: "excavation"
+      ...bunkerSize(BUNKER_SPECS.large_nuclear_bunker), placementMode: "excavation"
     },
     {
       id: "strategic_operations_bunker", name: "Strategic Underground Operations Centre",
       description: "Vast three-level joint command complex with situation room, coordination consoles, servers, medical, accommodation and redundant utilities.",
-      size: { x: 51, y: 37, z: 41 }, foundationDepth: 35, placementMode: "excavation"
+      ...bunkerSize(BUNKER_SPECS.strategic_operations_bunker), placementMode: "excavation"
     }
   ],
   strategic: [
     {
       id: "small_tactical_radar_post", name: "Small Tactical Radar Post",
       description: "Compact forward radar post with an elevated upward-facing circular array, operations consoles and perimeter lighting.",
-      size: { x: 19, y: 20, z: 19 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.small_tactical_radar_post, foundationDepth: 2
     },
     {
       id: "medium_radar_station", name: "Medium Radar Station",
       description: "Hardened radar station with a large elevated sky-facing array, divided operations floor, servers and service lighting.",
-      size: { x: 31, y: 27, z: 27 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.medium_radar_station, foundationDepth: 2
     },
     {
       id: "large_early_warning_radar_complex", name: "Large Early-Warning Radar Complex",
       description: "Two-level strategic surveillance complex with a massive upward-facing circular early-warning array and support towers.",
-      size: { x: 45, y: 38, z: 39 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.large_early_warning_radar_complex, foundationDepth: 2
     },
     {
       id: "radar_radome_facility", name: "Radar & Radome Facility",
@@ -269,32 +278,32 @@ export const STRUCTURES = {
     {
       id: "small_communications_dish_station", name: "Small Communications Dish Station",
       description: "Compact communications building carrying a roof-mounted parabolic dish and a furnished control room.",
-      size: { x: 17, y: 20, z: 17 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.small_communications_dish_station, foundationDepth: 2
     },
     {
       id: "medium_satellite_dish_station", name: "Medium Satellite Dish Station",
       description: "Operational satellite ground station with a large dish, divided control floor and communications servers.",
-      size: { x: 29, y: 30, z: 29 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.medium_satellite_dish_station, foundationDepth: 2
     },
     {
       id: "large_strategic_satellite_array", name: "Large Strategic Satellite Array",
       description: "Two-storey joint communications centre supporting one principal dish and two auxiliary tracking dishes.",
-      size: { x: 45, y: 44, z: 45 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.large_strategic_satellite_array, foundationDepth: 2
     },
     {
       id: "standalone_small_satellite_dish", name: "Standalone Small Satellite Dish",
       description: "Small freestanding parabolic communications dish on an illuminated equipment pedestal.",
-      size: { x: 13, y: 17, z: 13 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.standalone_small_satellite_dish, foundationDepth: 2
     },
     {
       id: "standalone_medium_satellite_dish", name: "Standalone Medium Satellite Dish",
       description: "Medium freestanding satellite dish with a reinforced pedestal and corner service lights.",
-      size: { x: 21, y: 23, z: 21 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.standalone_medium_satellite_dish, foundationDepth: 2
     },
     {
       id: "standalone_large_satellite_dish", name: "Standalone Large Satellite Dish",
       description: "Large freestanding strategic dish with a tall pedestal, maintenance ring and illuminated service perimeter.",
-      size: { x: 31, y: 33, z: 31 }, foundationDepth: 2
+      size: STRATEGIC_SIZES.standalone_large_satellite_dish, foundationDepth: 2
     }
   ],
   logistics: [

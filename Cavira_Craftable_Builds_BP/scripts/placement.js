@@ -113,6 +113,12 @@ export function validatePlacement(dimension, origin, size, rotation) {
 
 export function clearVolume(dimension, origin, size, rotation) {
   const air = BlockPermutation.resolve("minecraft:air");
+  if (dimension.isRecorder) {
+    const a = toWorldLocation(origin, { x: 0, y: 0, z: 0 }, size, rotation);
+    const b = toWorldLocation(origin, { x: size.x - 1, y: size.y - 1, z: size.z - 1 }, size, rotation);
+    dimension.fillWorld(a, b, air);
+    return;
+  }
   for (let x = 0; x < size.x; x++) {
     for (let y = 0; y < size.y; y++) {
       for (let z = 0; z < size.z; z++) {

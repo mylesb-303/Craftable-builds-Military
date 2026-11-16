@@ -2,7 +2,7 @@ import { MockDimension, world, system } from "@minecraft/server";
 import { STRUCTURES } from "./scripts/registry.js";
 import { runBuilder } from "./scripts/main.js";
 import { clearVolume, showFootprintPreview, validatePlacement, restorePreview } from "./scripts/placement.js";
-import { constructStaged, restoreStaged } from "./scripts/construction_engine.js";
+import { constructStaged, restoreStaged, worldBounds } from "./scripts/construction_engine.js";
 import { registerPreview, unregisterPreview } from "./scripts/preview_guard.js";
 
 const eq = (a,b) => { if (a.size!==b.size) return false; for (const [k,v] of a) if (b.get(k)!==v) return false; return true; };
@@ -19,7 +19,7 @@ for (const s of all) {
     const dim = new MockDimension(); globalThis.__dim = dim;
     if (!validatePlacement(dim, origin, s.size, rot).ok) { console.log(`FAIL validate ${s.id}`); fail++; }
     const t0 = system.ticks;
-    const res = await constructStaged(dim, build);
+    const res = await constructStaged(dim, build, undefined, worldBounds(origin, s.size, rot));
     const ticks = system.ticks - t0;
     if (!res.ok) { console.log(`FAIL staged ${s.id} ${rot}: ${res.reason}`); fail++; continue; }
     // compare final world state (ignoring blocks unchanged vs base terrain)
@@ -36,7 +36,7 @@ console.log(`largest job: ${maxName} ${maxWrites} writes (incl. undo) over ${max
 
 // unloaded-chunk abort: nothing must change
 { const s = all.find(x=>x.id==="watch_tower"); const dim=new MockDimension(); dim.unloadedX = origin.x+5; globalThis.__dim=dim;
-  const r = await constructStaged(dim, d=>{clearVolume(d,origin,s.size,"south"); runBuilder(s.id,d,origin,"south","woodland");});
+  const r = await constructStaged(dim, d=>{clearVolume(d,origin,s.size,"south"); runBuilder(s.id,d,origin,"south","woodland");}, undefined, worldBounds(origin,s.size,"south"));
   console.log(`unloaded abort: ok=${r.ok} writes=${dim.writes} -> ${!r.ok && dim.writes===0 ? "PASS":"FAIL"}`); }
 
 // height-range validation

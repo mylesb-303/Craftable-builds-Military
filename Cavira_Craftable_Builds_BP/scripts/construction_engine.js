@@ -1,81 +1,178 @@
 import { BlockPermutation, system } from "@minecraft/server";
 
 // ---------------------------------------------------------------------------
-// CAVIRA staged construction engine (v1.4.1)
+// CAVIRA staged construction engine — v2 (v1.5.0)
 //
-// Builders are unchanged: they still call dimension.getBlock(loc)?.setPermutation(p).
-// We hand them a *recording* dimension instead of the real one, so a build is
-// first compiled into a de-duplicated list of block writes. That list is then
-// captured (for undo) and applied with system.runJob, spreading the work over
-// as many ticks as the device needs instead of one giant tick.
+// Builders still call dimension.getBlock(loc)?.setPermutation(p) (or the fast
+// recorder.fillWorld box API). They run against a *recording* dimension that
+// compiles the build into a dense palette-indexed grid (2 bytes per block), so
+// even a 400k-block bomber hangar compiles in well under a megabyte.
 //
-// Write ordering (applies to both construction and undo/rollback):
-//   1. Solid / non-air blocks, bottom-up  -> floors before walls before roofs.
-//   2. Air blocks, top-down               -> interiors are carved only after the
-//                                           shell is sealed (water-safe).
-//   3. Attachable blocks, recorded order  -> doors, ladders, plates, torches,
-//                                           plants etc. go on once supports exist.
+// The grid is then captured (for undo) and applied with system.runJob, spread
+// over as many ticks as the device needs.
+//
+// Safe write order (construction AND undo):
+//   phase 0  solid blocks, bottom-up     floors -> walls -> roofs
+//   phase 1  air, top-down               carve interiors after shells seal (water-safe)
+//   phase 2  attachables, write order    doors, ladders, lanterns, plants, scaffolding
 // ---------------------------------------------------------------------------
 
-const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|moss_carpet|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|flowering_azalea$)/;
+const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|scaffolding|end_rod|lightning_rod)/;
 
 const OPS_PER_YIELD = 48;
-
-function key(x, y, z) {
-  return `${x},${y},${z}`;
-}
-
-function isAirId(id) {
-  return id === "minecraft:air";
-}
+const SCAN_PER_YIELD = 4096;
 
 function phaseOf(typeId) {
-  if (isAirId(typeId)) return 1;
+  if (typeId === "minecraft:air") return 1;
   if (ATTACHABLE.test(typeId)) return 2;
   return 0;
 }
 
-/** Sorts writes into the safe application order described above. */
-export function orderWrites(writes) {
-  const indexed = writes.map((w, i) => ({ w, i, phase: phaseOf(w.permutation.type.id) }));
-  indexed.sort((a, b) => {
-    if (a.phase !== b.phase) return a.phase - b.phase;
-    if (a.phase === 0 && a.w.location.y !== b.w.location.y) return a.w.location.y - b.w.location.y;
-    if (a.phase === 1 && a.w.location.y !== b.w.location.y) return b.w.location.y - a.w.location.y;
-    return a.i - b.i;
-  });
-  return indexed.map((entry) => entry.w);
+class Palette {
+  constructor() {
+    this.list = [null];
+    this.ids = new Map();
+    this.phase = [0];
+  }
+  id(permutation) {
+    let id = this.ids.get(permutation);
+    if (id === undefined) {
+      id = this.list.length;
+      this.list.push(permutation);
+      this.ids.set(permutation, id);
+      this.phase.push(phaseOf(permutation.type.id));
+    }
+    return id;
+  }
+}
+
+/** World-space bounding box for a structure placed at origin/size/rotation. */
+export function worldBounds(origin, size, rotation, margin = 0) {
+  const swap = rotation === "east" || rotation === "west";
+  const sx = swap ? size.z : size.x;
+  const sz = swap ? size.x : size.z;
+  return {
+    min: { x: origin.x - margin, y: origin.y - margin, z: origin.z - margin },
+    max: { x: origin.x + sx - 1 + margin, y: origin.y + size.y - 1 + margin, z: origin.z + sz - 1 + margin }
+  };
 }
 
 /**
- * Runs builder code against a recording dimension and returns the final,
- * de-duplicated set of writes (last write to a position wins).
+ * Compiles builder code into a grid. Returns a CompiledBuild.
  */
-export function compileBuild(realDimension, buildFn) {
-  const writes = new Map();
-  const recorder = {
-    id: realDimension.id,
-    getBlock(location) {
-      const x = Math.floor(location.x);
-      const y = Math.floor(location.y);
-      const z = Math.floor(location.z);
-      return {
-        location: { x, y, z },
-        setPermutation(permutation) {
-          const k = key(x, y, z);
-          // Re-inserting moves the entry to the end, preserving true write order
-          // for attachables such as lower/upper door halves.
-          writes.delete(k);
-          writes.set(k, { location: { x, y, z }, permutation });
-        }
-      };
+export function compileBuild(realDimension, buildFn, bounds) {
+  const min = bounds.min;
+  const W = bounds.max.x - min.x + 1;
+  const H = bounds.max.y - min.y + 1;
+  const D = bounds.max.z - min.z + 1;
+  const grid = new Uint16Array(W * H * D);
+  const palette = new Palette();
+  const attach = new Map(); // idx -> sequence (write order for phase 2)
+  const overflow = new Map(); // "x,y,z" -> { location, id, seq }
+  let seq = 0;
+
+  const write = (x, y, z, permutation) => {
+    const id = palette.id(permutation);
+    const lx = x - min.x;
+    const ly = y - min.y;
+    const lz = z - min.z;
+    if (lx < 0 || ly < 0 || lz < 0 || lx >= W || ly >= H || lz >= D) {
+      const k = `${x},${y},${z}`;
+      overflow.delete(k);
+      overflow.set(k, { location: { x, y, z }, id, seq: seq++ });
+      return;
+    }
+    const idx = (ly * D + lz) * W + lx;
+    grid[idx] = id;
+    if (palette.phase[id] === 2) {
+      attach.delete(idx);
+      attach.set(idx, seq++);
+    } else if (attach.size) {
+      attach.delete(idx);
     }
   };
+
+  // A single reusable writer object keeps legacy builders allocation-free.
+  const writer = {
+    _x: 0, _y: 0, _z: 0,
+    setPermutation(permutation) {
+      write(this._x, this._y, this._z, permutation);
+    }
+  };
+  const recorder = {
+    id: realDimension.id,
+    isRecorder: true,
+    getBlock(location) {
+      writer._x = Math.floor(location.x);
+      writer._y = Math.floor(location.y);
+      writer._z = Math.floor(location.z);
+      return writer;
+    },
+    /** Fast world-space box fill (inclusive). */
+    fillWorld(a, b, permutation) {
+      const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x);
+      const y1 = Math.min(a.y, b.y), y2 = Math.max(a.y, b.y);
+      const z1 = Math.min(a.z, b.z), z2 = Math.max(a.z, b.z);
+      for (let y = y1; y <= y2; y++) for (let z = z1; z <= z2; z++) for (let x = x1; x <= x2; x++) write(x, y, z, permutation);
+    },
+    write
+  };
   buildFn(recorder);
-  return orderWrites([...writes.values()]);
+  return { min, W, H, D, grid, palette, attach, overflow };
+}
+
+/**
+ * Generator over grid indices in safe phase order for a given value array.
+ * Yields { idx } objects via callback to avoid allocation; returns via `visit`.
+ */
+function* orderedVisit(compiled, values, phaseOfValue, visit, extra) {
+  const { W, D, H } = compiled;
+  const layer = W * D;
+  let scanned = 0;
+  // phase 0: bottom-up
+  for (let y = 0; y < H; y++) {
+    const base = y * layer;
+    for (let i = 0; i < layer; i++) {
+      const v = values[base + i];
+      if (v && phaseOfValue(v) === 0) yield* visit(base + i, v);
+      if (++scanned % SCAN_PER_YIELD === 0) yield;
+    }
+  }
+  // phase 1: top-down
+  for (let y = H - 1; y >= 0; y--) {
+    const base = y * layer;
+    for (let i = 0; i < layer; i++) {
+      const v = values[base + i];
+      if (v && phaseOfValue(v) === 1) yield* visit(base + i, v);
+      if (++scanned % SCAN_PER_YIELD === 0) yield;
+    }
+  }
+  // phase 2: attachables in write order (or any remaining when no order known)
+  if (extra?.attachOrder) {
+    for (const idx of extra.attachOrder) {
+      const v = values[idx];
+      if (v && phaseOfValue(v) === 2) yield* visit(idx, v);
+    }
+  } else {
+    for (let i = 0; i < values.length; i++) {
+      const v = values[i];
+      if (v && phaseOfValue(v) === 2) yield* visit(i, v);
+      if (++scanned % SCAN_PER_YIELD === 0) yield;
+    }
+  }
+}
+
+function locOf(compiled, idx) {
+  const { W, D, min } = compiled;
+  const x = idx % W;
+  const t = (idx - x) / W;
+  const z = t % D;
+  const y = (t - z) / D;
+  return { x: min.x + x, y: min.y + y, z: min.z + z };
 }
 
 function samePermutation(current, target) {
+  if (current === target) return true;
   try {
     return current.matches(target.type.id, target.getAllStates());
   } catch {
@@ -83,60 +180,94 @@ function samePermutation(current, target) {
   }
 }
 
-/**
- * Staged capture: reads every target block once, drops writes that would not
- * change anything, and records the original permutation for undo.
- * Yields a result object: { ok, writes, snapshot, reason }.
- */
-function* captureJob(dimension, writes, progress) {
-  const pending = [];
-  const snapshot = [];
+function countNonZero(values) {
   let n = 0;
-  for (const write of writes) {
-    const block = dimension.getBlock(write.location);
-    if (!block) {
-      return { ok: false, reason: "Part of the build area is in an unloaded chunk or outside the world height. Move closer and try again." };
-    }
-    const original = block.permutation;
-    if (!samePermutation(original, write.permutation)) {
-      pending.push(write);
-      snapshot.push({ location: write.location, permutation: original });
-    }
-    if (++n % OPS_PER_YIELD === 0) {
-      progress?.(n / writes.length);
-      yield;
-    }
-  }
-  return { ok: true, writes: pending, snapshot: orderWrites(snapshot) };
+  for (let i = 0; i < values.length; i++) if (values[i]) n++;
+  return n;
 }
 
-function* applyJob(dimension, writes, progress) {
+/** Staged capture. Removes no-op writes from the grid; returns snapshot data. */
+function* captureJob(dimension, compiled, progress) {
+  const { grid, palette } = compiled;
+  const orig = new Uint16Array(grid.length);
+  const origPalette = new Palette();
+  const total = countNonZero(grid) + compiled.overflow.size;
+  let n = 0;
+  let abort = false;
+  const attachOrder = [...compiled.attach.entries()].sort((a, b) => a[1] - b[1]).map((e) => e[0]);
+  compiled.attachOrder = attachOrder;
+
+  const visit = function* (idx, v) {
+    if (abort) return;
+    const block = dimension.getBlock(locOf(compiled, idx));
+    if (!block) {
+      abort = true;
+      return;
+    }
+    const current = block.permutation;
+    if (samePermutation(current, palette.list[v])) grid[idx] = 0;
+    else orig[idx] = origPalette.id(current);
+    if (++n % OPS_PER_YIELD === 0) {
+      progress?.(n / total);
+      yield;
+    }
+  };
+  yield* orderedVisit(compiled, grid, (v) => palette.phase[v], visit, { attachOrder });
+  if (abort) return { ok: false, reason: "Part of the build area is in an unloaded chunk or outside the world height. Move closer and try again." };
+
+  const overflowSnap = [];
+  for (const entry of compiled.overflow.values()) {
+    const block = dimension.getBlock(entry.location);
+    if (!block) return { ok: false, reason: "Part of the build area is in an unloaded chunk. Move closer and try again." };
+    overflowSnap.push({ location: entry.location, permutation: block.permutation });
+    if (++n % OPS_PER_YIELD === 0) yield;
+  }
+  return { ok: true, snapshot: { dimension, compiled: { min: compiled.min, W: compiled.W, H: compiled.H, D: compiled.D }, orig, palette: origPalette, overflow: overflowSnap } };
+}
+
+function* applyGridJob(dimension, compiled, values, paletteObj, progress, attachOrder) {
+  const total = countNonZero(values);
   let n = 0;
   let failed = 0;
-  for (const write of writes) {
+  const visit = function* (idx, v) {
     try {
-      const block = dimension.getBlock(write.location);
-      if (block) block.setPermutation(write.permutation);
+      const block = dimension.getBlock(locOf(compiled, idx));
+      if (block) block.setPermutation(paletteObj.list[v]);
       else failed++;
     } catch {
       failed++;
     }
     if (++n % OPS_PER_YIELD === 0) {
-      progress?.(n / writes.length);
+      progress?.(total ? n / total : 1);
       yield;
     }
+  };
+  yield* orderedVisit(compiled, values, (v) => paletteObj.phase[v], visit, attachOrder ? { attachOrder } : undefined);
+  return failed;
+}
+
+function* applyListJob(dimension, entries) {
+  let failed = 0;
+  let n = 0;
+  const sorted = [...entries].sort((a, b) => phaseOf(a.permutation.type.id) - phaseOf(b.permutation.type.id) || a.location.y - b.location.y);
+  for (const e of sorted) {
+    try {
+      const block = dimension.getBlock(e.location);
+      if (block) block.setPermutation(e.permutation);
+      else failed++;
+    } catch {
+      failed++;
+    }
+    if (++n % OPS_PER_YIELD === 0) yield;
   }
   return failed;
 }
 
-/** Wraps system.runJob so callers can await a generator's return value. */
 function runJobAsync(generator) {
   return new Promise((resolve, reject) => {
-    let result;
     function* wrapper() {
       try {
-        result = yield* generator;
-        resolve(result);
+        resolve(yield* generator);
       } catch (error) {
         reject(error);
       }
@@ -149,25 +280,27 @@ function runJobAsync(generator) {
  * Full staged construction.
  * @returns {Promise<{ok:boolean, reason?:string, snapshot?:object, changed?:number}>}
  */
-export async function constructStaged(dimension, buildFn, onProgress) {
-  let writes;
+export async function constructStaged(dimension, buildFn, onProgress, bounds) {
+  let compiled;
   try {
-    writes = compileBuild(dimension, buildFn);
+    compiled = compileBuild(dimension, buildFn, bounds);
   } catch (error) {
     return { ok: false, reason: `Builder error: ${error}` };
   }
-
-  const captured = await runJobAsync(captureJob(dimension, writes, (f) => onProgress?.("Surveying site", f)));
+  const captured = await runJobAsync(captureJob(dimension, compiled, (f) => onProgress?.("Surveying site", f)));
   if (!captured.ok) return captured;
-
-  const snapshot = { dimension, blocks: captured.snapshot };
+  const changed = countNonZero(compiled.grid) + compiled.overflow.size;
   try {
-    const failed = await runJobAsync(applyJob(dimension, captured.writes, (f) => onProgress?.("Constructing", f)));
+    let failed = await runJobAsync(applyGridJob(dimension, compiled, compiled.grid, compiled.palette, (f) => onProgress?.("Constructing", f), compiled.attachOrder));
+    if (compiled.overflow.size) {
+      const list = [...compiled.overflow.values()].map((e) => ({ location: e.location, permutation: compiled.palette.list[e.id] }));
+      failed += await runJobAsync(applyListJob(dimension, list));
+    }
     if (failed > 0) console.warn(`[CAVIRA] ${failed} block writes skipped (chunk unloaded during build).`);
-    return { ok: true, snapshot, changed: captured.writes.length };
+    return { ok: true, snapshot: captured.snapshot, changed };
   } catch (error) {
     console.warn(`[CAVIRA] Construction error, rolling back: ${error}`);
-    await restoreStaged(snapshot);
+    await restoreStaged(captured.snapshot);
     return { ok: false, reason: "Construction was interrupted and the area has been restored." };
   }
 }
@@ -175,7 +308,8 @@ export async function constructStaged(dimension, buildFn, onProgress) {
 /** Staged restore of a snapshot taken by constructStaged (undo / rollback). */
 export async function restoreStaged(snapshot, onProgress) {
   if (!snapshot) return false;
-  const failed = await runJobAsync(applyJob(snapshot.dimension, snapshot.blocks, (f) => onProgress?.("Restoring", f)));
+  let failed = await runJobAsync(applyGridJob(snapshot.dimension, snapshot.compiled, snapshot.orig, snapshot.palette, (f) => onProgress?.("Restoring", f)));
+  if (snapshot.overflow?.length) failed += await runJobAsync(applyListJob(snapshot.dimension, snapshot.overflow));
   return failed === 0;
 }
 
