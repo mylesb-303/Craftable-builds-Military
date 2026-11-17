@@ -1,5 +1,6 @@
 import { FACILITY_SIZES } from "./structures/facilities.js";
 import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
+import { FULL_RUNWAY_SIZES, FULL_RUNWAY_SNAP } from "./structures/full_runways.js";
 import { SUPER_HANGAR_SIZE } from "./structures/super_hangar.js";
 import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
 import { BUNKER_SPECS, bunkerSize } from "./structures/bunkers.js";
@@ -18,6 +19,21 @@ export const CATEGORIES = [
 
 export const STRUCTURES = {
   airfield: [
+    {
+      id: "runway_full_short", name: "Full Runway — Fighter (Short)",
+      description: "Complete 289-block fighter runway (31 m paved): both thresholds with reciprocal numbers, blast pads, lit centreline, parallel taxiway, entry holding points, rapid exits, holding bays and an apron link. For F-22, F-35, F/A-18, Typhoon, F-15E, A-10, MQ-9 and helicopters.",
+      size: FULL_RUNWAY_SIZES.runway_full_short, foundationDepth: 2, snap: FULL_RUNWAY_SNAP.runway_full_short, options: "designator"
+    },
+    {
+      id: "runway_full_medium", name: "Full Runway — Tactical & Transport (Medium)",
+      description: "Complete 449-block runway (45 m paved, same cross-section as the modular pieces) with parallel taxiway, holding points, rapid exits, holding bays and apron link. Adds KC-135, C-130/AC-130, A400M and B-1B.",
+      size: FULL_RUNWAY_SIZES.runway_full_medium, foundationDepth: 2, snap: FULL_RUNWAY_SNAP.runway_full_medium, options: "designator"
+    },
+    {
+      id: "runway_full_long", name: "Full Runway — Strategic Heavy (Long)",
+      description: "Complete 641-block heavy runway (61 m paved + 7 m shoulders) for every aircraft including the C-5M, B-52H, C-17 and B-2, with wingtip-safe taxiway separation, holding points, rapid exits, large holding bays and apron link.",
+      size: FULL_RUNWAY_SIZES.runway_full_long, foundationDepth: 2, snap: FULL_RUNWAY_SNAP.runway_full_long, options: "designator"
+    },
     {
       id: "runway_threshold", name: "Runway Threshold & Designator",
       description: "Blast pad with yellow chevrons and approach lights, green threshold bar, piano keys and your runway number (e.g. 38R).",

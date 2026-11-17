@@ -6,7 +6,8 @@ import { constructStaged, restoreStaged, worldBounds } from "./scripts/construct
 import { registerPreview, unregisterPreview } from "./scripts/preview_guard.js";
 
 const eq = (a,b) => { if (a.size!==b.size) return false; for (const [k,v] of a) if (b.get(k)!==v) return false; return true; };
-const all = Object.values(STRUCTURES).flat();
+const everything = Object.values(STRUCTURES).flat();
+const all = everything.filter(s => !process.env.ONLY || s.id.startsWith(process.env.ONLY));
 let fail = 0, maxWrites = 0, maxTicks = 0, maxName="";
 const origin = { x: 100, y: 61, z: -40 };
 for (const s of all) {
@@ -35,7 +36,7 @@ console.log(`structures=${all.length} rotations=4 failures=${fail}`);
 console.log(`largest job: ${maxName} ${maxWrites} writes (incl. undo) over ${maxTicks} mock ticks`);
 
 // unloaded-chunk abort: nothing must change
-{ const s = all.find(x=>x.id==="watch_tower"); const dim=new MockDimension(); dim.unloadedX = origin.x+5; globalThis.__dim=dim;
+{ const s = everything.find(x=>x.id==="watch_tower"); const dim=new MockDimension(); dim.unloadedX = origin.x+5; globalThis.__dim=dim;
   const r = await constructStaged(dim, d=>{clearVolume(d,origin,s.size,"south"); runBuilder(s.id,d,origin,"south","woodland");}, undefined, worldBounds(origin,s.size,"south"));
   console.log(`unloaded abort: ok=${r.ok} writes=${dim.writes} -> ${!r.ok && dim.writes===0 ? "PASS":"FAIL"}`); }
 

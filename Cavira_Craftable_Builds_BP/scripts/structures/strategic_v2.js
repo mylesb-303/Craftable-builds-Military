@@ -34,7 +34,7 @@ function pad(c, size, block) {
 }
 
 /** Dish on a column/yoke mount. Returns the top of the mount. */
-function dishOnMount(c, o) {
+export function dishOnMount(c, o) {
   const { cx, cz, baseY, R } = o;
   const tilt = o.tilt ?? 40;
   const n = aimAxis(tilt, o.toward ?? "south", o.yaw ?? 0);
@@ -54,7 +54,7 @@ function dishOnMount(c, o) {
 }
 
 /** Rotating phased-array radar on a turntable pedestal. */
-function arrayOnPedestal(c, o) {
+export function arrayOnPedestal(c, o) {
   const { cx, cz, baseY, width, height } = o;
   const pedH = o.pedestalH ?? 3;
   c.cyl(cx, cz, baseY, baseY, Math.max(2, Math.floor(width / 5)), c.B.tile);

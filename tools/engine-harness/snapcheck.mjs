@@ -22,6 +22,14 @@ for (const rot of ["south", "west", "north", "east"]) {
   const cOut = toWorldLocation(o, { x: 44, y: 0, z: 12 }, S.taxiway_corner.size, rot);
   const tsIn = toWorldLocation(ts.origin, { x: 12, y: 0, z: 31 }, S.taxiway_straight.size, ts.rotation);
   check(`${rot}: corner->taxiway turns 90° (rot ${ts.rotation})`, Math.abs(cOut.x - tsIn.x) + Math.abs(cOut.z - tsIn.z) === 1 && ts.rotation !== rot);
+  // full runway apron link -> taxiway straight
+  for (const fid of ["runway_full_short", "runway_full_medium", "runway_full_long"]) {
+    const F = S[fid]; const link = F.snap.out;
+    const fr = computeSnap({ structure: F, origin: o, rotation: rot }, S.taxiway_straight, "out");
+    const fOut = toWorldLocation(o, { x: link.x, y: 0, z: link.z }, F.size, rot);
+    const fIn = toWorldLocation(fr.origin, { x: 12, y: 0, z: 31 }, S.taxiway_straight.size, fr.rotation);
+    check(`${rot}: ${fid} link->taxiway adjacent`, Math.abs(fOut.x - fIn.x) + Math.abs(fOut.z - fIn.z) === 1 && fr.origin.y === o.y);
+  }
   // junction branch -> taxiway straight
   const jPrev = { structure: S.runway_taxiway_junction, origin: o, rotation: rot };
   const br = computeSnap(jPrev, S.taxiway_straight, "branch");

@@ -85,6 +85,7 @@ import {
   buildAircraftApronV2,
   normaliseDesignator
 } from "./structures/airfield.js";
+import { buildRunwayFullShort, buildRunwayFullMedium, buildRunwayFullLong } from "./structures/full_runways.js";
 import {
   buildNavalHeadquarters,
   buildHarbourControlTower,
@@ -289,23 +290,26 @@ async function showVariantMenu(player, categoryId, structureId) {
   const variantId = VARIANTS[response.selection].id;
   let options = {};
   if (structure.options === "designator") {
-    options = await askDesignator(player);
+    options = await askDesignator(player, 0, structureId.startsWith("runway_full_"));
     if (!options) return;
   }
   await beginFreeLookPreview(player, categoryId, structureId, variantId, options);
 }
 
-async function askDesignator(player, attempt = 0) {
+async function askDesignator(player, attempt = 0, both = false) {
+  const label = both
+    ? "Number for the end nearest you (1–99, optional L/C/R). The far end gets the reciprocal automatically — e.g. 09 → 27, 27L → 09R."
+    : "Runway number (1–99) with optional L, C or R — e.g. 09, 27L, 38R";
   const form = new ModalFormData()
     .title("Runway Designator")
-    .textField("Runway number (1–99) with optional L, C or R — e.g. 09, 27L, 38R", "38R", { defaultValue: "09" });
+    .textField(label, "38R", { defaultValue: "09" });
   const response = await form.show(player);
   if (response.canceled) return undefined;
   const raw = response.formValues?.[0];
   const des = normaliseDesignator(raw);
   if (!des) {
     tell(player, `§c"${raw}" is not a valid designator.§r Use a number from 1 to 99, optionally followed by L, C or R.`);
-    return attempt < 2 ? askDesignator(player, attempt + 1) : undefined;
+    return attempt < 2 ? askDesignator(player, attempt + 1, both) : undefined;
   }
   return { designator: `${des.number}${des.side}` };
 }
@@ -614,6 +618,15 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       break;
     case "fuel_tank_farm":
       buildFuelTankFarm(dimension, origin, rotation, variantId);
+      break;
+    case "runway_full_short":
+      buildRunwayFullShort(dimension, origin, rotation, variantId, options);
+      break;
+    case "runway_full_medium":
+      buildRunwayFullMedium(dimension, origin, rotation, variantId, options);
+      break;
+    case "runway_full_long":
+      buildRunwayFullLong(dimension, origin, rotation, variantId, options);
       break;
     case "runway_threshold":
       buildRunwayThresholdV2(dimension, origin, rotation, variantId, options);

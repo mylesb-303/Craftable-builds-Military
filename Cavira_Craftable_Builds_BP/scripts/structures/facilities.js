@@ -42,14 +42,14 @@ function ctx(id, dimension, origin, rotation, variantId) {
 // ---------------------------------------------------------------------------
 
 /** Paved site with a lit path from the south edge to the entrance. */
-function site(c, size, pathX1, pathX2, toZ, opts = {}) {
+export function site(c, size, pathX1, pathX2, toZ, opts = {}) {
   c.fill(0, WALK - 1, 0, size.x - 1, WALK - 1, size.z - 1, opts.ground ?? c.B.andesite);
   for (let z = toZ; z < size.z; z++) for (let x = pathX1; x <= pathX2; x++) c.set(x, WALK - 1, z, (x === pathX1 || x === pathX2) ? c.B.smooth : c.V.floor);
   for (let z = toZ + 2; z < size.z; z += 4) { lampPost(c, pathX1 - 1, z, WALK, 2); lampPost(c, pathX2 + 1, z, WALK, 2); }
 }
 
 /** Solid gable roof. Ridge runs along `axis` ("x" or "z"). Attic is filled so it never becomes a dark void. */
-function gableRoof(c, x1, z1, x2, z2, y, o = {}) {
+export function gableRoof(c, x1, z1, x2, z2, y, o = {}) {
   const axis = o.axis ?? "x";
   const stairId = o.stair ?? "minecraft:deepslate_tile_stairs";
   const fill = o.fill ?? c.B.tile;
@@ -80,7 +80,7 @@ function gableRoof(c, x1, z1, x2, z2, y, o = {}) {
 }
 
 /** Sawtooth north-light roof over an open hall (teeth run along x, glazing faces north). */
-function sawtoothRoof(c, x1, z1, x2, z2, y, tooth = 6) {
+export function sawtoothRoof(c, x1, z1, x2, z2, y, tooth = 6) {
   for (let zs = z1; zs <= z2; zs += tooth) {
     const ze = Math.min(z2, zs + tooth - 1);
     const h = Math.min(4, ze - zs);
@@ -96,7 +96,7 @@ function sawtoothRoof(c, x1, z1, x2, z2, y, tooth = 6) {
 }
 
 /** Barrel-vault roof along z spanning x1..x2. */
-function barrelRoof(c, x1, z1, x2, z2, y, rise, mat, rib) {
+export function barrelRoof(c, x1, z1, x2, z2, y, rise, mat, rib) {
   const cx = (x1 + x2) / 2;
   const half = (x2 - x1) / 2 + 0.5;
   for (let x = x1; x <= x2; x++) {
@@ -111,7 +111,7 @@ function barrelRoof(c, x1, z1, x2, z2, y, rise, mat, rib) {
 }
 
 /** Grass-covered earth berm sloping out from a wall line (bunkers, magazines). */
-function berm(c, x1, z1, x2, z2, walk, h, sides = ["north", "east", "west"]) {
+export function berm(c, x1, z1, x2, z2, walk, h, sides = ["north", "east", "west"]) {
   for (let k = 0; k < h; k++) {
     const y = walk + k;
     const o = h - k;
@@ -130,7 +130,7 @@ function berm(c, x1, z1, x2, z2, walk, h, sides = ["north", "east", "west"]) {
 }
 
 /** Entrance canopy with lights on the south face (z = zFace). */
-function canopy(c, x1, x2, zFace, y, depth = 3, mat) {
+export function canopy(c, x1, x2, zFace, y, depth = 3, mat) {
   c.fill(x1, y, zFace + 1, x2, y, zFace + depth, mat ?? c.V.frame);
   for (let x = x1; x <= x2; x += 2) c.set(x, y - 1, zFace + depth, c.B.bars);
   c.set(x1, y, zFace + depth, c.B.sea);
@@ -138,7 +138,7 @@ function canopy(c, x1, x2, zFace, y, depth = 3, mat) {
   for (const x of [x1, x2]) c.fill(x, WALK, zFace + depth, x, y - 1, zFace + depth, c.B.blackstoneBricks);
 }
 
-function flagpole(c, x, z, h, colours) {
+export function flagpole(c, x, z, h, colours) {
   c.set(x, WALK, z, c.B.stoneBrick);
   c.fill(x, WALK + 1, z, x, WALK + h, z, c.B.bars);
   colours.forEach((col, i) => { c.fill(x + 1, WALK + h - i, z, x + 3, WALK + h - i, z, col); });
@@ -146,7 +146,7 @@ function flagpole(c, x, z, h, colours) {
 }
 
 /** Big vehicle/hangar door opening with striped retracted leaf on one side. */
-function bigDoor(c, x1, x2, zFace, h) {
+export function bigDoor(c, x1, x2, zFace, h) {
   c.clear(x1, WALK, zFace, x2, WALK + h - 1, zFace);
   for (let x = x1; x <= x2; x++) c.set(x, WALK + h, zFace, x % 2 ? c.B.yellow : c.B.black);
   c.set(x1 - 1, WALK + h - 1, zFace, c.B.sea);
@@ -154,7 +154,7 @@ function bigDoor(c, x1, x2, zFace, h) {
 }
 
 /** Open-plan hall with gable/sawtooth/barrel roof, big doors and a side office block. */
-function hall(c, o) {
+export function hall(c, o) {
   const { x1, z1, x2, z2, h } = o;
   c.fill(x1, WALK - 1, z1, x2, WALK - 1, z2, c.B.smooth);
   c.walls(x1, WALK, z1, x2, WALK + h - 1, z2, c.V.wall);

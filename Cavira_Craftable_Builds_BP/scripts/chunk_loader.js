@@ -10,7 +10,33 @@ import { system, world } from "@minecraft/server";
 // without touching ticking areas the player made themselves.
 // ---------------------------------------------------------------------------
 
-const POOL = ["cavira_build_0", "cavira_build_1", "cavira_build_2", "cavira_build_3", "cavira_build_4", "cavira_build_5"];
+const POOL = ["cavira_build_0", "cavira_build_1", "cavira_build_2", "cavira_build_3", "cavira_build_4", "cavira_build_5", "cavira_build_6", "cavira_build_7"];
+// Bedrock caps one ticking area at 100 chunks, so big sites are split into tiles.
+const MAX_CHUNKS = 100;
+
+/** Splits world bounds into chunk-aligned boxes of at most MAX_CHUNKS chunks each. */
+export function tileBounds(bounds) {
+  const cx1 = Math.floor(bounds.min.x / 16), cx2 = Math.floor(bounds.max.x / 16);
+  const cz1 = Math.floor(bounds.min.z / 16), cz2 = Math.floor(bounds.max.z / 16);
+  const w = cx2 - cx1 + 1, h = cz2 - cz1 + 1;
+  // cut along the longer side into strips the full width of the shorter side
+  const alongX = w > h;
+  const across = alongX ? h : w;
+  const stripsAcross = Math.ceil(across / MAX_CHUNKS);
+  const acrossPer = Math.ceil(across / stripsAcross);
+  const alongPer = Math.max(1, Math.floor(MAX_CHUNKS / acrossPer));
+  const tiles = [];
+  for (let a = 0; a < (alongX ? w : h); a += alongPer) for (let b = 0; b < across; b += acrossPer) {
+    const A1 = a, A2 = Math.min((alongX ? w : h) - 1, a + alongPer - 1);
+    const B1 = b, B2 = Math.min(across - 1, b + acrossPer - 1);
+    const [x1, x2, z1, z2] = alongX ? [A1, A2, B1, B2] : [B1, B2, A1, A2];
+    tiles.push({
+      min: { x: Math.max(bounds.min.x, (cx1 + x1) * 16), y: bounds.min.y, z: Math.max(bounds.min.z, (cz1 + z1) * 16) },
+      max: { x: Math.min(bounds.max.x, (cx1 + x2) * 16 + 15), y: bounds.max.y, z: Math.min(bounds.max.z, (cz1 + z2) * 16 + 15) }
+    });
+  }
+  return tiles;
+}
 const IN_USE = new Map(); // name -> owner key
 
 function run(dimension, command) {
@@ -49,13 +75,23 @@ function sampleLoaded(dimension, bounds) {
 export async function ensureLoaded(dimension, bounds, ownerKey, onWait) {
   if (sampleLoaded(dimension, bounds)) return "";
   release(dimension, ownerKey);
-  const name = POOL.find((n) => !IN_USE.has(n));
-  if (!name) return undefined;
-  const { min, max } = bounds;
-  if (!run(dimension, `tickingarea add ${min.x} ${min.y} ${min.z} ${max.x} ${max.y} ${max.z} ${name} true`)) return undefined;
-  IN_USE.set(name, ownerKey);
+  const tiles = tileBounds(bounds);
+  const free = POOL.filter((n) => !IN_USE.has(n));
+  if (tiles.length > free.length) return undefined;
+  const names = [];
+  for (let i = 0; i < tiles.length; i++) {
+    const { min, max } = tiles[i];
+    if (!run(dimension, `tickingarea add ${min.x} ${min.y} ${min.z} ${max.x} ${max.y} ${max.z} ${free[i]} true`)) {
+      release(dimension, ownerKey);
+      return undefined;
+    }
+    IN_USE.set(free[i], ownerKey);
+    names.push(free[i]);
+  }
+  const name = names.join(",");
   onWait?.();
-  for (let i = 0; i < 60; i++) {
+  const polls = 60 * Math.max(1, Math.min(3, tiles.length));
+  for (let i = 0; i < polls; i++) {
     await system.waitTicks(5);
     if (sampleLoaded(dimension, bounds)) return name;
   }

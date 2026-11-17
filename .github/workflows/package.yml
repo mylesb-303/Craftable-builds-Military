@@ -57,7 +57,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.7.0_Lighting_Access_Previews.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.7.1_Full_Runways.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -71,4 +71,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Cavira-Craftable-Builds-1.7.0-Lighting-Access-Previews
-          path: dist/Cavira_Craftable_Builds_1.7.0_Lighting_Access_Previews.mcaddon
+          path: dist/Cavira_Craftable_Builds_1.7.1_Full_Runways.mcaddon

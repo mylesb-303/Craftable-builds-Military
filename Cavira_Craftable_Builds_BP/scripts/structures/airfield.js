@@ -43,14 +43,14 @@ export const AIRFIELD_SNAP = {
   aircraft_apron: { in: { x: 40, z: 71, dir: "south" }, out: { x: 40, z: 71, dir: "south" } }
 };
 
-function hash(x, z) {
+export function hash(x, z) {
   let h = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
 /** Speckled asphalt like the reference: mostly black with grey blobs and flecks. */
-function asphalt(c, x, z) {
+export function asphalt(c, x, z) {
   const blob = hash(x >> 1, z >> 1);
   const n = hash(x, z);
   if (blob < 0.16 && n < 0.7) return c.B.grey;
@@ -58,10 +58,10 @@ function asphalt(c, x, z) {
   if (n > 0.995) return c.B.lightGrey;
   return c.B.black;
 }
-function shoulder(c, x, z) {
+export function shoulder(c, x, z) {
   return hash(x + 911, z) < 0.35 ? c.B.andesite : c.B.lightGrey;
 }
-function blastPad(c, x, z) {
+export function blastPad(c, x, z) {
   return hash(x, z + 77) < 0.3 ? c.B.andesite : c.B.lightGrey;
 }
 
@@ -110,7 +110,7 @@ function mirroredBars(c, offsets, z1, z2, width = 1) {
 }
 
 // ---- pixel font (5 × 7) for runway designators -----------------------------
-const FONT = {
+export const FONT = {
   0: ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
   1: ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
   2: ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
