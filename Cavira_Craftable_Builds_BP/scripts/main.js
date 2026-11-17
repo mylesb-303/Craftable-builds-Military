@@ -16,6 +16,7 @@ import {
   validatePlacement
 } from "./placement.js";
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
+import { sectionPlan, sectionBounds } from "./sections.js";
 import { accessPass, lightPass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, release, cleanupLeftovers } from "./chunk_loader.js";
@@ -159,7 +160,8 @@ function clearActivePreview(player) {
 
 /** Force-loads the session's build area (temporary ticking area) if needed. */
 async function loadArea(player, dimension, origin, structure, rotation) {
-  const bounds = worldBounds(origin, structure.size, rotation);
+  const plan = sectionPlan(structure);
+  const bounds = plan ? sectionBounds(origin, structure.size, rotation, ...plan[0]) : worldBounds(origin, structure.size, rotation);
   const name = await ensureLoaded(dimension, bounds, player.id, () =>
     tell(player, "§7Large site — loading the whole build area, one moment…"));
   if (name === undefined) {
@@ -169,8 +171,19 @@ async function loadArea(player, dimension, origin, structure, rotation) {
   return true;
 }
 
+/** First local z the placement check samples: sectioned builds only need their near section loaded. */
+function validateFromZ(structure) {
+  const plan = sectionPlan(structure);
+  return plan ? plan[0][0] : 0;
+}
+
 function drawPreview(player, session) {
-  session.previewBlocks = showFootprintPreview(session.dimension, session.origin, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1, session.structure.previewFloorY);
+  const plan = sectionPlan(session.structure);
+  session.previewBlocks = showFootprintPreview(session.dimension, session.origin, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1, session.structure.previewFloorY, Boolean(plan));
+  if (plan && !session.sectionNoticeShown) {
+    session.sectionNoticeShown = true;
+    tell(player, `§b${session.structure.name}§r is ${session.structure.size.z} blocks long, so it is built in §e${plan.length} sections§r starting from your end. Only the nearby part of the green outline shows — the rest is in chunks that load as each section is built.`);
+  }
   registerPreview(player.id, session.dimension, session.previewBlocks);
 }
 
@@ -217,18 +230,27 @@ async function performUndo(player, record) {
   LAST_BUILDS.delete(player.id);
   LAST_PIECE.delete(player.id);
   BUSY.set(player.id, { label: "Restoring", fraction: 0 });
-  const snapDim = record.snapshot.dimension;
-  const g = record.snapshot.compiled;
+  const snapshots = record.snapshots ?? [record.snapshot];
+  const snapDim = snapshots[0].dimension;
   try {
-    await ensureLoaded(snapDim, { min: g.min, max: { x: g.min.x + g.W - 1, y: g.min.y + g.H - 1, z: g.min.z + g.D - 1 } }, player.id);
-    const ok = await restoreStaged(record.snapshot, (label, fraction) => {
-      BUSY.set(player.id, { label, fraction });
-      try {
-        player.onScreenDisplay.setActionBar(`§eRestoring terrain §7${Math.floor(fraction * 100)}%`);
-      } catch {
-        // ignore
-      }
-    });
+    let ok = true;
+    // Newest section first, each with its own temporary loading area.
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      const snap = snapshots[i];
+      const g = snap.compiled;
+      await ensureLoaded(snapDim, { min: g.min, max: { x: g.min.x + g.W - 1, y: g.min.y + g.H - 1, z: g.min.z + g.D - 1 } }, player.id);
+      const done = snapshots.length - 1 - i;
+      ok = (await restoreStaged(snap, (label, fraction) => {
+        const total = (done + fraction) / snapshots.length;
+        BUSY.set(player.id, { label, fraction: total });
+        try {
+          player.onScreenDisplay.setActionBar(`§eRestoring terrain §7${Math.floor(total * 100)}%`);
+        } catch {
+          // ignore
+        }
+      })) && ok;
+      release(snapDim, player.id);
+    }
     tell(player, ok
       ? `§a${record.structureName} removed and the previous blocks restored.`
       : `§e${record.structureName} removed; some blocks were in unloaded chunks and could not be restored.`);
@@ -322,7 +344,7 @@ async function beginFreeLookPreview(player, categoryId, structureId, variantId, 
   const rotation = getCardinalRotation(player);
   const origin = getPlacementOrigin(player, structure.size, rotation, structure.foundationDepth ?? 1, structure.previewFloorY);
   if (!(await loadArea(player, player.dimension, origin, structure, rotation))) return;
-  const validation = validatePlacement(player.dimension, origin, structure.size, rotation);
+  const validation = validatePlacement(player.dimension, origin, structure.size, rotation, validateFromZ(structure));
   if (!validation.ok) {
     tell(player, `§cCannot preview:§r ${validation.reason}`);
     return;
@@ -442,9 +464,39 @@ async function showPreviewControls(player) {
   return actions[response.selection]?.();
 }
 
+/**
+ * Builds a very large structure section by section, each with its own single
+ * temporary ticking area, nearest section first.
+ */
+export async function constructSections(player, dimension, structure, origin, rotation, plan, buildFn, onProgress) {
+  const snapshots = [];
+  const reports = {};
+  let changed = 0;
+  for (let i = 0; i < plan.length; i++) {
+    const [z1, z2] = plan[i];
+    const bounds = sectionBounds(origin, structure.size, rotation, z1, z2);
+    const name = await ensureLoaded(dimension, bounds, player.id);
+    if (name === undefined) {
+      return { ok: false, snapshots, reason: `section ${i + 1} could not be loaded (the world may already have its maximum of 10 ticking areas — check /tickingarea list).` };
+    }
+    const result = await constructStaged(dimension, buildFn([z1, z2]),
+      (label, f) => onProgress(`${label} §7(section ${i + 1}/${plan.length})§b`, (i + f) / plan.length),
+      bounds, postPassesFor(structure), true);
+    release(dimension, player.id);
+    if (!result.ok) return { ok: false, snapshots, reason: result.reason };
+    snapshots.push(result.snapshot);
+    changed += result.changed;
+    for (const [k, v] of Object.entries(result.reports ?? {})) {
+      reports[k] ??= {};
+      for (const [field, n] of Object.entries(v ?? {})) if (typeof n === "number") reports[k][field] = (reports[k][field] ?? 0) + n;
+    }
+  }
+  return { ok: true, snapshots, changed, reports };
+}
+
 async function constructPreview(player, session, trial = false) {
   const dimension = session.dimension;
-  const validation = validatePlacement(dimension, session.origin, session.structure.size, session.rotation);
+  const validation = validatePlacement(dimension, session.origin, session.structure.size, session.rotation, validateFromZ(session.structure));
   if (!validation.ok) {
     tell(player, `§cCannot build:§r ${validation.reason}`);
     return;
@@ -469,17 +521,27 @@ async function constructPreview(player, session, trial = false) {
     }
   };
   try {
-    const result = await constructStaged(dimension, (recorder) => {
+    const buildFn = (zRange) => (recorder) => {
       if (structure.placementMode !== "overlay" && structure.placementMode !== "excavation") {
         clearVolume(recorder, origin, structure.size, rotation, clearStartY(structure));
       }
-      runBuilder(structure.id, recorder, origin, rotation, variantId, session.options ?? {});
-    }, onProgress, worldBounds(origin, structure.size, rotation), postPassesFor(structure));
+      runBuilder(structure.id, recorder, origin, rotation, variantId, { ...(session.options ?? {}), zRange });
+    };
+    const plan = sectionPlan(structure);
+    const result = plan
+      ? await constructSections(player, dimension, structure, origin, rotation, plan, buildFn, onProgress)
+      : await constructStaged(dimension, buildFn(undefined), onProgress, worldBounds(origin, structure.size, rotation), postPassesFor(structure));
+    const snapshots = result.snapshots ?? (result.snapshot ? [result.snapshot] : []);
     if (!result.ok) {
-      tell(player, `§cConstruction cancelled:§r ${result.reason}`);
+      if (snapshots.length) {
+        LAST_BUILDS.set(player.id, { snapshots, structureName: structure.name, variantName: variant.name });
+        tell(player, `§eConstruction stopped after ${snapshots.length} of ${plan.length} sections:§r ${result.reason} §7Use the tablet's Undo to remove the part that was built.`);
+      } else {
+        tell(player, `§cConstruction cancelled:§r ${result.reason}`);
+      }
       return;
     }
-    LAST_BUILDS.set(player.id, { snapshot: result.snapshot, structureName: structure.name, variantName: variant.name });
+    LAST_BUILDS.set(player.id, { snapshots, structureName: structure.name, variantName: variant.name });
     if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
     const r = result.reports ?? {};
     const extras = [];

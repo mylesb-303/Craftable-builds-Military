@@ -127,7 +127,8 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
   };
 
   // ---- base surface --------------------------------------------------------
-  for (let x = 0; x < size.x; x++) for (let z = 0; z < size.z; z++) {
+  const [zr1, zr2] = options.zRange ?? [0, size.z - 1]; // sectioned builds: only this section's rows
+  for (let x = 0; x < size.x; x++) for (let z = zr1; z <= zr2; z++) {
     if (x >= rwX1 && x <= rwX2) {
       c.set(x, SY - 1, z, c.B.concrete);
       let b;

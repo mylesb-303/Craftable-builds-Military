@@ -46,6 +46,15 @@ class Palette {
   }
 }
 
+/** getBlock that treats unloaded / out-of-world locations as missing instead of throwing. */
+export function safeGetBlock(dimension, location) {
+  try {
+    return dimension.getBlock(location);
+  } catch {
+    return undefined;
+  }
+}
+
 /** World-space bounding box for a structure placed at origin/size/rotation. */
 export function worldBounds(origin, size, rotation, margin = 0) {
   const swap = rotation === "east" || rotation === "west";
@@ -60,7 +69,7 @@ export function worldBounds(origin, size, rotation, margin = 0) {
 /**
  * Compiles builder code into a grid. Returns a CompiledBuild.
  */
-export function compileBuild(realDimension, buildFn, bounds) {
+export function compileBuild(realDimension, buildFn, bounds, clip = false) {
   const min = bounds.min;
   const W = bounds.max.x - min.x + 1;
   const H = bounds.max.y - min.y + 1;
@@ -77,6 +86,7 @@ export function compileBuild(realDimension, buildFn, bounds) {
     const ly = y - min.y;
     const lz = z - min.z;
     if (lx < 0 || ly < 0 || lz < 0 || lx >= W || ly >= H || lz >= D) {
+      if (clip) return; // sectioned builds: other sections own these blocks
       const k = `${x},${y},${z}`;
       overflow.delete(k);
       overflow.set(k, { location: { x, y, z }, id, seq: seq++ });
@@ -199,7 +209,7 @@ function* captureJob(dimension, compiled, progress) {
 
   const visit = function* (idx, v) {
     if (abort) return;
-    const block = dimension.getBlock(locOf(compiled, idx));
+    const block = safeGetBlock(dimension, locOf(compiled, idx));
     if (!block) {
       abort = true;
       return;
@@ -217,7 +227,7 @@ function* captureJob(dimension, compiled, progress) {
 
   const overflowSnap = [];
   for (const entry of compiled.overflow.values()) {
-    const block = dimension.getBlock(entry.location);
+    const block = safeGetBlock(dimension, entry.location);
     if (!block) return { ok: false, reason: "Part of the build area is in an unloaded chunk. Move closer and try again." };
     overflowSnap.push({ location: entry.location, permutation: block.permutation });
     if (++n % OPS_PER_YIELD === 0) yield;
@@ -280,10 +290,10 @@ function runJobAsync(generator) {
  * Full staged construction.
  * @returns {Promise<{ok:boolean, reason?:string, snapshot?:object, changed?:number}>}
  */
-export async function constructStaged(dimension, buildFn, onProgress, bounds, post = []) {
+export async function constructStaged(dimension, buildFn, onProgress, bounds, post = [], clip = false) {
   let compiled;
   try {
-    compiled = compileBuild(dimension, buildFn, bounds);
+    compiled = compileBuild(dimension, buildFn, bounds, clip);
   } catch (error) {
     return { ok: false, reason: `Builder error: ${error}` };
   }

@@ -93,7 +93,12 @@ function recoverStoredPreviews() {
       const remaining = [];
       for (const row of data.r) {
         const [x, y, z, p] = row;
-        const block = dimension.getBlock({ x, y, z });
+        let block;
+        try {
+          block = dimension.getBlock({ x, y, z });
+        } catch {
+          block = undefined;
+        }
         if (!block) {
           remaining.push(row); // chunk not loaded yet — retry later
           continue;

@@ -1,5 +1,13 @@
 import { BlockPermutation } from "@minecraft/server";
 
+function safeBlock(dimension, location) {
+  try {
+    return dimension.getBlock(location);
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeYaw(yaw) {
   return ((yaw % 360) + 360) % 360;
 }
@@ -81,7 +89,7 @@ export function getPlacementOrigin(player, size, rotation, foundationDepth = 1, 
   };
 }
 
-export function validatePlacement(dimension, origin, size, rotation) {
+export function validatePlacement(dimension, origin, size, rotation, zFrom = 0) {
   // Cheap chunk-level check (v1.4.1). The old version read every block of the
   // volume in one tick (up to ~89k reads). The staged engine still verifies
   // every block it actually touches before changing anything.
@@ -98,12 +106,12 @@ export function validatePlacement(dimension, origin, size, rotation) {
   const zs = [];
   for (let x = 0; x < size.x; x += step) xs.push(x);
   if (xs[xs.length - 1] !== size.x - 1) xs.push(size.x - 1);
-  for (let z = 0; z < size.z; z += step) zs.push(z);
+  for (let z = zFrom; z < size.z; z += step) zs.push(z);
   if (zs[zs.length - 1] !== size.z - 1) zs.push(size.z - 1);
   for (const x of xs) {
     for (const z of zs) {
       const loc = toWorldLocation(origin, { x, y: 0, z }, size, rotation);
-      if (!dimension.getBlock(loc)) {
+      if (!safeBlock(dimension, loc)) {
         return { ok: false, reason: "Part of the build area could not be loaded. Move a little closer to where it will stand and reposition." };
       }
     }
@@ -140,7 +148,7 @@ export function clearVolume(dimension, origin, size, rotation, fromY = 0) {
   }
 }
 
-export function showFootprintPreview(dimension, origin, size, rotation, foundationDepth = 1, previewFloorY) {
+export function showFootprintPreview(dimension, origin, size, rotation, foundationDepth = 1, previewFloorY, lite = false) {
   const outline = BlockPermutation.resolve("minecraft:lime_concrete");
   const ground = BlockPermutation.resolve("minecraft:yellow_concrete");
   const floorGuide = BlockPermutation.resolve("minecraft:cyan_concrete");
@@ -153,7 +161,7 @@ export function showFootprintPreview(dimension, origin, size, rotation, foundati
     const loc = toWorldLocation(origin, local, size, rotation);
     const key = `${loc.x},${loc.y},${loc.z}`;
     if (seen.has(key)) return;
-    const block = dimension.getBlock(loc);
+    const block = safeBlock(dimension, loc);
     if (!block) return;
     seen.add(key);
     changed.push({ location: loc, permutation: block.permutation });
@@ -175,12 +183,14 @@ export function showFootprintPreview(dimension, origin, size, rotation, foundati
   // height visible before construction, including long walls and pathways.
   const centreX = Math.floor((size.x - 1) / 2);
   const centreZ = Math.floor((size.z - 1) / 2);
-  for (let x = 1; x < size.x - 1; x++) {
+  // Sectioned (very large) builds get an outline only: the far end is usually
+  // not loaded yet, and tens of thousands of guide blocks would stall the game.
+  if (!lite) for (let x = 1; x < size.x - 1; x++) {
     if (x % 5 === 0 || x === centreX) {
       for (let z = 1; z < size.z - 1; z++) mark({ x, y: groundY, z }, floorGuide);
     }
   }
-  for (let z = 1; z < size.z - 1; z++) {
+  if (!lite) for (let z = 1; z < size.z - 1; z++) {
     if (z % 5 === 0 || z === centreZ) {
       for (let x = 1; x < size.x - 1; x++) mark({ x, y: groundY, z }, floorGuide);
     }
@@ -195,7 +205,7 @@ export function showFootprintPreview(dimension, origin, size, rotation, foundati
 }
 
 export function restorePreview(dimension, changed) {
-  for (const entry of changed) dimension.getBlock(entry.location)?.setPermutation(entry.permutation);
+  for (const entry of changed) safeBlock(dimension, entry.location)?.setPermutation(entry.permutation);
 }
 
 export function captureVolume(dimension, origin, size, rotation) {
