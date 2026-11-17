@@ -77,12 +77,12 @@ export function buildSmallTacticalRadarPost(dimension, origin, rotation, variant
   pad(c, size);
   securityFence(c, { x1: 1, z1: 1, x2: size.x - 2, z2: size.z - 2, walk: WALK, post: 4, gates: [{ x1: 9, z1: size.z - 2, x2: 13, z2: size.z - 2 }] });
   for (const [x, z] of [[2, 2], [size.x - 3, 2], [2, size.z - 3], [size.x - 3, size.z - 3]]) lampPost(c, x, z, WALK, 2);
-  const b = opsBuilding(c, { x1: 5, z1: 5, x2: 17, z2: 16, walk: WALK, floors: ["command"], floorH: 6 });
+  const b = opsBuilding(c, { x1: 5, z1: 5, x2: 17, z2: 16, walk: WALK, floors: ["command"], floorH: 6, roofDeck: true });
   // roof plant & radar
   c.fill(7, b.top, 6, 9, b.top + 1, 8, c.B.lightGrey);
   c.set(8, b.top + 1, 6, c.B.bars);
-  arrayOnPedestal(c, { cx: 11, cz: 10, baseY: b.top + 1, width: 13, height: 5, pedestalH: 3 });
-  latticeMast(c, { x: 15, z: 6, y1: b.top + 1, y2: b.top + 7, width: 1, beacon: true });
+  arrayOnPedestal(c, { cx: 11, cz: 10, baseY: b.top, width: 13, height: 5, pedestalH: 3 });
+  latticeMast(c, { x: 15, z: 6, y1: b.top, y2: b.top + 6, width: 1, beacon: true });
   // equipment shelter
   c.fill(18, WALK, 7, 20, WALK + 2, 10, c.B.concrete);
   c.set(19, WALK + 1, 10, c.B.bars);
@@ -100,12 +100,12 @@ export function buildMediumRadarStation(dimension, origin, rotation, variantId) 
     floors: [[{ u1: 12, u2: 19, type: "servers" }, { u1: 21, u2: 28, type: "storage" }], [{ u1: 12, u2: 28, type: "command" }]], roofDeck: true
   });
   // lattice tower on the roof with the T-array
-  latticeMast(c, { x: 17, z: 11, y1: b.top + 1, y2: b.top + 9, width: 5, beacon: false });
-  c.fill(17, b.top + 10, 11, 21, b.top + 10, 15, c.B.tile);
-  arrayOnPedestal(c, { cx: 19, cz: 13, baseY: b.top + 10, width: 21, height: 7, pedestalH: 2 });
+  latticeMast(c, { x: 17, z: 11, y1: b.top, y2: b.top + 8, width: 5, beacon: false });
+  c.fill(17, b.top + 9, 11, 21, b.top + 9, 15, c.B.tile);
+  arrayOnPedestal(c, { cx: 19, cz: 13, baseY: b.top + 9, width: 21, height: 7, pedestalH: 2 });
   // secondary antennas and floodlights
-  latticeMast(c, { x: 25, z: 8, y1: b.top + 1, y2: b.top + 6, width: 1 });
-  latticeMast(c, { x: 11, z: 8, y1: b.top + 1, y2: b.top + 5, width: 1 });
+  latticeMast(c, { x: 25, z: 8, y1: b.top, y2: b.top + 5, width: 1 });
+  latticeMast(c, { x: 11, z: 8, y1: b.top, y2: b.top + 4, width: 1 });
   for (const [x, z] of [[3, 3], [size.x - 4, 3], [3, size.z - 4], [size.x - 4, size.z - 4]]) {
     c.fill(x, WALK, z, x, WALK + 6, z, c.B.blackstoneBricks);
     c.fill(x - 1, WALK + 7, z, x + 1, WALK + 7, z, c.B.sea);
@@ -133,17 +133,18 @@ export function buildLargeEarlyWarningRadarComplex(dimension, origin, rotation, 
     roofDeck: true
   });
   // stepped pyramid pedestal
-  let y = b.top + 1;
+  let y = b.top;
   for (const [r, h] of [[7, 2], [5, 2], [3, 3]]) {
     c.fill(25 - r, y, 21 - r, 25 + r, y + h - 1, 21 + r, h === 3 ? c.B.blackstoneBricks : c.B.tile);
     for (let k = -r; k <= r; k += 3) { c.set(25 + k, y + h - 1, 21 + r, c.B.froglight); }
     y += h;
   }
-  // diagonal braces from pedestal to the array frame
+  // maintenance stairs up the pyramid from the roof deck
+  externalStairs(c, 22, 29, "north", b.top, y - b.top, 2, "minecraft:polished_deepslate_stairs");
   arrayOnPedestal(c, { cx: 25, cz: 21, baseY: y, width: 33, height: 11, pedestalH: 3, tilt: 12 });
   // twin lattice antenna towers
-  latticeMast(c, { x: 12, z: 11, y1: b.top + 1, y2: b.top + 14, width: 3 });
-  latticeMast(c, { x: 36, z: 11, y1: b.top + 1, y2: b.top + 14, width: 3 });
+  latticeMast(c, { x: 12, z: 11, y1: b.top, y2: b.top + 13, width: 3 });
+  latticeMast(c, { x: 36, z: 11, y1: b.top, y2: b.top + 13, width: 3 });
   // perimeter equipment
   for (const x of [8, 14, 36, 42]) { c.fill(x, WALK, size.z - 9, x + 2, WALK + 1, size.z - 7, c.B.concrete); c.set(x + 1, WALK + 2, size.z - 8, c.B.froglight); }
 }
@@ -157,14 +158,13 @@ export function buildSmallCommunicationsDishStation(dimension, origin, rotation,
   pad(c, size);
   securityFence(c, { x1: 1, z1: 1, x2: size.x - 2, z2: size.z - 2, walk: WALK, height: 1, post: 4, gates: [{ x1: 9, z1: size.z - 2, x2: 11, z2: size.z - 2 }] });
   for (const [x, z] of [[1, 1], [size.x - 2, 1], [1, size.z - 2], [size.x - 2, size.z - 2]]) lampPost(c, x, z, WALK, 2);
-  const b = opsBuilding(c, { x1: 4, z1: 4, x2: 16, z2: 15, walk: WALK, floors: ["comms"], floorH: 6 });
+  const b = opsBuilding(c, { x1: 4, z1: 4, x2: 16, z2: 15, walk: WALK, floors: ["comms"], floorH: 6, roofDeck: true });
   // roof drum with railing
-  c.fill(7, b.top + 1, 6, 13, b.top + 2, 12, c.B.concrete);
-  for (let x = 4; x <= 16; x++) for (const z of [4, 15]) c.set(x, b.top + 1, z, c.B.bars);
-  for (let z = 4; z <= 15; z++) for (const x of [4, 16]) c.set(x, b.top + 1, z, c.B.bars);
+  c.fill(7, b.top, 6, 13, b.top + 1, 12, c.B.concrete);
   // cable riser
-  c.fill(16, WALK, 9, 16, b.top + 2, 9, c.B.basalt);
-  dishOnMount(c, { cx: 10, cz: 9, baseY: b.top + 3, R: 7, tilt: 42, toward: "south", yaw: 35 });
+  c.fill(16, WALK, 9, 16, b.top + 1, 9, c.B.basalt);
+  externalStairs(c, 9, 14, "north", b.top, 2, 2, "minecraft:polished_deepslate_stairs");
+  dishOnMount(c, { cx: 10, cz: 9, baseY: b.top + 2, R: 7, tilt: 42, toward: "south", yaw: 35 });
 }
 
 export function buildMediumSatelliteDishStation(dimension, origin, rotation, variantId) {
@@ -178,8 +178,9 @@ export function buildMediumSatelliteDishStation(dimension, origin, rotation, var
     roofDeck: true
   });
   // rooftop drum with yellow walkway ring and access stair
-  const top = tieredPlinth(c, 17, 15, b.top + 1, [{ r: 6, h: 2, block: c.B.concrete, rail: true, railR: 6 }, { r: 4, h: 2, block: c.B.tile, lights: 8 }]);
-  c.fill(23, b.top + 1, 15, 24, b.top + 2, 15, c.B.concrete);
+  const top = tieredPlinth(c, 17, 15, b.top, [{ r: 6, h: 2, block: c.B.concrete, rail: true, railR: 6 }, { r: 4, h: 2, block: c.B.tile, lights: 8 }]);
+  externalStairs(c, 16, 22, "north", b.top, top - b.top + 1, 2, "minecraft:polished_deepslate_stairs");
+  c.fill(23, b.top, 15, 24, b.top + 1, 15, c.B.concrete);
   dishOnMount(c, { cx: 17, cz: 15, baseY: top + 1, R: 11, tilt: 45, toward: "south", yaw: -30 });
   // ground plant
   c.fill(30, WALK, 8, 32, WALK + 2, 12, c.B.lightGrey);
@@ -203,7 +204,8 @@ export function buildLargeStrategicSatelliteArray(dimension, origin, rotation, v
     roofDeck: true
   });
   // main dish on a tall plinth
-  const mainTop = tieredPlinth(c, 28, 27, b.top + 1, [{ r: 8, h: 2, block: c.B.tile, rail: true, railR: 8, lights: 12 }, { r: 5, h: 3, block: c.B.blackstoneBricks, lights: 8 }]);
+  const mainTop = tieredPlinth(c, 28, 27, b.top, [{ r: 8, h: 2, block: c.B.tile, rail: true, railR: 8, lights: 12 }, { r: 5, h: 3, block: c.B.blackstoneBricks, lights: 8 }]);
+  externalStairs(c, 26, 36, "north", b.top, mainTop - b.top + 1, 2, "minecraft:polished_deepslate_stairs");
   dishOnMount(c, { cx: 28, cz: 27, baseY: mainTop + 1, R: 15, tilt: 38, toward: "south", rimLight: c.B.froglight, rimLightEvery: 4 });
   // two auxiliary dish towers
   for (const [tx, yaw] of [[8, 35], [48, -35]]) {
@@ -276,7 +278,8 @@ export function buildStandaloneLargeSatelliteDish(dimension, origin, rotation, v
     { r: 6, h: 3, block: c.B.blackstoneBricks }
   ]);
   externalStairs(c, cx + 5, cz + 17, "north", WALK, 6, 3);
-  externalStairs(c, cx - 7, cz + 13, "north", WALK + 6, 4, 2);
+  externalStairs(c, cx - 2, cz + 13, "north", WALK + 6, 4, 2);
+  externalStairs(c, cx - 2, cz + 9, "north", WALK + 10, 3, 2);
   // amber rim lights and A-frame legs
   for (const dx of [-5, 5]) c.line(cx + dx, top, cz + 3, cx + Math.sign(dx), top + 9, cz, c.B.blackstoneBricks);
   dishOnMount(c, { cx, cz, baseY: top + 1, R: 17, tilt: 36, toward: "south", yaw: -20, rim: c.B.lightGrey, rimLight: c.B.froglight, rimLightEvery: 3 });

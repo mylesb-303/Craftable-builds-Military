@@ -6,7 +6,7 @@ COL = {"air":None,"obsidian":(30,18,48),"polished_deepslate":(70,70,75),"deepsla
 "polished_blackstone_stairs":(45,40,48),"yellow_concrete":(240,175,20),"red_concrete":(160,30,30),"white_concrete":(225,228,230),"quartz_block":(235,230,225),"brewing_stand":(120,100,80),
 "green_terracotta":(75,85,40),"orange_terracotta":(160,85,40),"barrel":(125,90,50),"spruce_planks":(115,85,50),"spruce_stairs":(115,85,50),"dark_oak_planks":(65,45,25),"scaffolding":(200,170,90),
 "ladder":(160,125,70),"glass":(200,230,240),"grass_block":(90,150,60),"dirt":(130,95,65),"stone":(120,120,120),"blast_furnace":(90,90,95),"ochre_froglight":(240,210,120),"polished_basalt":(90,90,95),
-"cauldron":(60,60,65),"smoker":(85,75,65),"furnace":(100,100,100),"tinted_glass":(40,35,50),"gray_concrete":(55,58,62),"light_gray_concrete":(125,125,115),"stone_bricks":(122,122,122),"blue_concrete":(45,45,145),"bamboo_fence":(215,190,60),"polished_deepslate_stairs":(70,70,75),"light_blue_concrete":(60,170,215),"green_concrete":(75,95,35),"redstone_lamp":(150,80,40),"verdant_froglight":(200,230,150)}
+"cauldron":(60,60,65),"smoker":(85,75,65),"furnace":(100,100,100),"tinted_glass":(40,35,50),"gray_concrete":(55,58,62),"light_gray_concrete":(125,125,115),"stone_bricks":(122,122,122),"blue_concrete":(45,45,145),"bamboo_fence":(215,190,60),"polished_deepslate_stairs":(70,70,75),"light_blue_concrete":(60,170,215),"green_concrete":(75,95,35),"redstone_lamp":(150,80,40),"verdant_froglight":(200,230,150),"stone_brick_stairs":(122,122,122),"tinted_glass":(45,40,55),"light_block_15":None,"bars":(110,110,110),"redstone_block":(170,20,10),"redstone_torch":(200,60,30),"deepslate_bricks":(65,65,70),"cobbled_deepslate":(75,75,80),"oak_planks":(160,130,80),"red_terracotta":(140,60,45),"lime_concrete":(95,170,25),"cyan_concrete":(20,120,135),"orange_concrete":(225,100,0),"brown_concrete":(95,60,30),"terracotta":(150,95,65),"sandstone":(215,200,150),"smooth_sandstone":(220,205,155),"polished_tuff":(110,115,105),"water":(50,90,200),"chiseled_bookshelf":(120,90,55),"bookshelf":(120,90,55)}
 def colour(name):
     n=name.split(":")[-1]
     if n in COL: return COL[n]
@@ -45,7 +45,7 @@ else:
                 z=ssum-x
                 if cut and z>=zlim: continue
                 n=at(x,y,z)
-                if n in skip: continue
+                if n in skip or n.endswith('light_block_15'): continue
                 if not (ex(x+1,y,z) or ex(x,y,z+1) or ex(x,y+1,z)): continue
                 c=colour(n)
                 px=ox+(x-z)*T; py=oy+(x+z)*T//2 - y*T

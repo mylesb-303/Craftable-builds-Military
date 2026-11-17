@@ -2,7 +2,7 @@
 import { MockDimension } from "@minecraft/server";
 import { STRUCTURES } from "./scripts/registry.js";
 import { runBuilder } from "./scripts/main.js";
-import { clearVolume } from "./scripts/placement.js";
+import { clearVolume, clearStartY } from "./scripts/placement.js";
 import { constructStaged, worldBounds } from "./scripts/construction_engine.js";
 import { writeFileSync } from "fs";
 const id = process.argv[2], rot = process.argv[3] ?? "south";
@@ -11,7 +11,7 @@ const G = 62; const origin = { x: 0, y: G - ((s.previewFloorY ?? Math.max(0,(s.f
 const dim = new MockDimension(); dim.base = (x,y,z) => (y < G ? (y < G-3 ? "minecraft:stone" : "minecraft:dirt") : y === G ? "minecraft:grass_block" : "minecraft:air");
 const { BlockPermutation } = await import("@minecraft/server");
 const baseFn = dim.base; dim.base = (x,y,z)=>BlockPermutation.resolve(baseFn(x,y,z));
-const res = await constructStaged(dim, d => { if (s.placementMode!=="overlay" && s.placementMode!=="excavation") clearVolume(d, origin, s.size, rot); runBuilder(s.id, d, origin, rot, "standard", JSON.parse(process.env.OPTS ?? "{}")); }, undefined, worldBounds(origin, s.size, rot, 2));
+const res = await constructStaged(dim, d => { if (s.placementMode!=="overlay" && s.placementMode!=="excavation") clearVolume(d, origin, s.size, rot, clearStartY(s)); runBuilder(s.id, d, origin, rot, "standard", JSON.parse(process.env.OPTS ?? "{}")); }, undefined, worldBounds(origin, s.size, rot, 2));
 if (!res.ok) { console.log("BUILD FAILED", res.reason); process.exit(1); }
 const b = worldBounds(origin, s.size, rot, 2);
 const W=b.max.x-b.min.x+1,H=b.max.y-b.min.y+1,D=b.max.z-b.min.z+1;

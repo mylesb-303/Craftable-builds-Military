@@ -111,16 +111,27 @@ export function validatePlacement(dimension, origin, size, rotation) {
   return { ok: true };
 }
 
-export function clearVolume(dimension, origin, size, rotation) {
+/**
+ * First local y the clearing pass empties. Terrain at and below the ground
+ * surface is kept (v1.7.0) so builds that don't fill their whole footprint no
+ * longer leave pits; builders write any below-ground space they need.
+ */
+export function clearStartY(structure) {
+  if (structure.clearBelowGround) return 0;
+  const surface = structure.previewFloorY ?? Math.max(0, (structure.foundationDepth ?? 1) - 1);
+  return Math.min(structure.size.y - 1, surface + 1);
+}
+
+export function clearVolume(dimension, origin, size, rotation, fromY = 0) {
   const air = BlockPermutation.resolve("minecraft:air");
   if (dimension.isRecorder) {
-    const a = toWorldLocation(origin, { x: 0, y: 0, z: 0 }, size, rotation);
+    const a = toWorldLocation(origin, { x: 0, y: fromY, z: 0 }, size, rotation);
     const b = toWorldLocation(origin, { x: size.x - 1, y: size.y - 1, z: size.z - 1 }, size, rotation);
     dimension.fillWorld(a, b, air);
     return;
   }
   for (let x = 0; x < size.x; x++) {
-    for (let y = 0; y < size.y; y++) {
+    for (let y = fromY; y < size.y; y++) {
       for (let z = 0; z < size.z; z++) {
         const loc = toWorldLocation(origin, { x, y, z }, size, rotation);
         dimension.getBlock(loc)?.setPermutation(air);

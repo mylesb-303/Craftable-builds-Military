@@ -17,7 +17,7 @@ import { BlockPermutation, system } from "@minecraft/server";
 //   phase 2  attachables, write order    doors, ladders, lanterns, plants, scaffolding
 // ---------------------------------------------------------------------------
 
-const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|scaffolding|end_rod|lightning_rod)/;
+const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|scaffolding|end_rod|lightning_rod|light_block)/;
 
 const OPS_PER_YIELD = 48;
 const SCAN_PER_YIELD = 4096;
@@ -280,12 +280,21 @@ function runJobAsync(generator) {
  * Full staged construction.
  * @returns {Promise<{ok:boolean, reason?:string, snapshot?:object, changed?:number}>}
  */
-export async function constructStaged(dimension, buildFn, onProgress, bounds) {
+export async function constructStaged(dimension, buildFn, onProgress, bounds, post = []) {
   let compiled;
   try {
     compiled = compileBuild(dimension, buildFn, bounds);
   } catch (error) {
     return { ok: false, reason: `Builder error: ${error}` };
+  }
+  const reports = {};
+  for (const [name, pass] of post) {
+    try {
+      onProgress?.(name === "access" ? "Checking access" : "Planning lighting", 0);
+      reports[name] = await runJobAsync(pass(compiled));
+    } catch (error) {
+      console.warn(`[CAVIRA] ${name} pass skipped: ${error}`);
+    }
   }
   const captured = await runJobAsync(captureJob(dimension, compiled, (f) => onProgress?.("Surveying site", f)));
   if (!captured.ok) return captured;
@@ -297,7 +306,7 @@ export async function constructStaged(dimension, buildFn, onProgress, bounds) {
       failed += await runJobAsync(applyListJob(dimension, list));
     }
     if (failed > 0) console.warn(`[CAVIRA] ${failed} block writes skipped (chunk unloaded during build).`);
-    return { ok: true, snapshot: captured.snapshot, changed };
+    return { ok: true, snapshot: captured.snapshot, changed, reports };
   } catch (error) {
     console.warn(`[CAVIRA] Construction error, rolling back: ${error}`);
     await restoreStaged(captured.snapshot);

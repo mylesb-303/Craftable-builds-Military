@@ -7,6 +7,7 @@ import {
   getStructures
 } from "./registry.js";
 import {
+  clearStartY,
   clearVolume,
   getCardinalRotation,
   getPlacementOrigin,
@@ -15,6 +16,7 @@ import {
   validatePlacement
 } from "./placement.js";
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
+import { accessPass, lightPass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, release, cleanupLeftovers } from "./chunk_loader.js";
 import { VARIANTS, getVariant } from "./variants.js";
@@ -35,6 +37,25 @@ import {
 } from "./structures/army_expansion.js";
 import { buildWatchTower } from "./structures/watch_tower.js";
 import { buildSuperHeavyAircraftHangar } from "./structures/super_hangar.js";
+import {
+  buildArmyBarracksV2,
+  buildOfficersQuartersV2,
+  buildArmyArmouryV2,
+  buildArmyVehicleDepotV2,
+  buildArmyMedicalFacilityV2,
+  buildArmyCommandBunkerV2,
+  buildAirfieldOperationsBuildingV2,
+  buildAirTrafficControlTowerV2,
+  buildNavalOperationsCentreV2,
+  buildSailorsBarracksV2,
+  buildDockyardLogisticsWarehouseV2,
+  buildShipMaintenanceWorkshopV2,
+  buildNavalAmmunitionBunkerV2,
+  buildHarbourControlTowerV2,
+  buildNavalHeadquartersV2,
+  buildHQAdministrationWingV2,
+  buildLogisticsHallV2
+} from "./structures/facilities.js";
 import { buildAirTrafficControlTower } from "./structures/air_traffic_control_tower.js";
 import {
   buildHQAdministrationWing,
@@ -102,7 +123,8 @@ const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
 const ACTIVE_PREVIEWS = new Map();
 const BUSY = new Map();
-const LAST_PIECE = new Map(); // playerId -> last snappable piece // playerId -> { label, fraction } while a staged job runs
+const LAST_PIECE = new Map(); // playerId -> last snappable piece
+const TRIALS = new Map(); // playerId -> session of a full-size "Try It" build awaiting Keep / Remove // playerId -> { label, fraction } while a staged job runs
 
 function tell(player, message) {
   player.sendMessage(`§8[§bCAVIRA§8]§r ${message}`);
@@ -181,10 +203,16 @@ async function undoLastBuild(player) {
     .button2("Cancel");
   const response = await form.show(player);
   if (response.canceled || response.selection !== 0) return;
+  await performUndo(player, record);
+}
+
+/** Restores the terrain under `record` (no confirmation). Returns true on success. */
+async function performUndo(player, record) {
   if (BUSY.has(player.id)) {
     tell(player, "§eWait for the current construction job to finish first.");
-    return;
+    return false;
   }
+  TRIALS.delete(player.id);
   LAST_BUILDS.delete(player.id);
   LAST_PIECE.delete(player.id);
   BUSY.set(player.id, { label: "Restoring", fraction: 0 });
@@ -203,6 +231,7 @@ async function undoLastBuild(player) {
     tell(player, ok
       ? `§a${record.structureName} removed and the previous blocks restored.`
       : `§e${record.structureName} removed; some blocks were in unloaded chunks and could not be restored.`);
+    return ok;
   } finally {
     BUSY.delete(player.id);
     release(snapDim, player.id);
@@ -237,8 +266,8 @@ async function showCategoryMenu(player, categoryId) {
   }
   const form = new ActionFormData()
     .title(`${category.name} Structures`)
-    .body("Select a structure. You will choose camouflage, then enter free-look placement preview mode.");
-  for (const structure of structures) form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`);
+    .body("Select a structure (the picture shows the finished build). You will choose camouflage, then see a placement outline — or use §6Try It Full Size§r to see the real thing before you commit.");
+  for (const structure of structures) form.button(`${structure.name}\n§7${structure.size.x}×${structure.size.z}×${structure.size.y}`, `textures/ui/cavira_builds/${structure.id}`);
   form.button("§8← Back");
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
@@ -341,6 +370,37 @@ async function applySnap(player, session, connectorName) {
   tell(player, "§aPreview snapped onto the end of your last piece. Inspect it, then use the tablet to construct.");
 }
 
+async function showTrialMenu(player) {
+  const session = TRIALS.get(player.id);
+  const record = LAST_BUILDS.get(player.id);
+  if (!session || !record) {
+    TRIALS.delete(player.id);
+    return showMainMenu(player);
+  }
+  const form = new ActionFormData()
+    .title(`Full-Size Preview: ${session.structure.name}`)
+    .body(`This is the real ${session.structure.name} in ${session.variant.name}. Keep it, remove it, or remove it and choose a new position.`)
+    .button("§aKeep It")
+    .button("§cRemove It")
+    .button("§bRemove & Move It")
+    .button("§8Decide Later");
+  const response = await form.show(player);
+  if (response.canceled || response.selection === undefined || response.selection === 3) return;
+  if (response.selection === 0) {
+    TRIALS.delete(player.id);
+    tell(player, `§a${session.structure.name} kept.§7 You can still undo it from the main menu.`);
+    return;
+  }
+  const removed = await performUndo(player, record);
+  if (removed && response.selection === 2) {
+    // back into placement preview at the same spot with the same settings
+    const again = { ...session, previewBlocks: [] };
+    ACTIVE_PREVIEWS.set(player.id, again);
+    if (await loadArea(player, again.dimension, again.origin, again.structure, again.rotation)) drawPreview(player, again);
+    tell(player, "§bPreview restored at the same spot — reposition, rotate or snap it, then construct.");
+  }
+}
+
 async function showPreviewControls(player) {
   const session = ACTIVE_PREVIEWS.get(player.id);
   if (!session) return showMainMenu(player);
@@ -354,6 +414,7 @@ async function showPreviewControls(player) {
   const actions = [];
   const add = (label, fn) => { form.button(label); actions.push(fn); };
   add("§aConstruct Here", () => constructPreview(player, session));
+  add("§6Try It Full Size\n§7Build it for real, then keep or remove", () => constructPreview(player, session, true));
   if (canSnap) add(`§dSnap to End of ${last.structure.name}`, () => applySnap(player, session, "out"));
   if (canBranch) add(`§dSnap to Taxiway Exit of ${last.structure.name}`, () => applySnap(player, session, "branch"));
   add("§bReposition In Front Of Me", async () => {
@@ -377,7 +438,7 @@ async function showPreviewControls(player) {
   return actions[response.selection]?.();
 }
 
-async function constructPreview(player, session) {
+async function constructPreview(player, session, trial = false) {
   const dimension = session.dimension;
   const validation = validatePlacement(dimension, session.origin, session.structure.size, session.rotation);
   if (!validation.ok) {
@@ -406,17 +467,26 @@ async function constructPreview(player, session) {
   try {
     const result = await constructStaged(dimension, (recorder) => {
       if (structure.placementMode !== "overlay" && structure.placementMode !== "excavation") {
-        clearVolume(recorder, origin, structure.size, rotation);
+        clearVolume(recorder, origin, structure.size, rotation, clearStartY(structure));
       }
       runBuilder(structure.id, recorder, origin, rotation, variantId, session.options ?? {});
-    }, onProgress, worldBounds(origin, structure.size, rotation));
+    }, onProgress, worldBounds(origin, structure.size, rotation), postPassesFor(structure));
     if (!result.ok) {
       tell(player, `§cConstruction cancelled:§r ${result.reason}`);
       return;
     }
     LAST_BUILDS.set(player.id, { snapshot: result.snapshot, structureName: structure.name, variantName: variant.name });
     if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
-    tell(player, `§a${structure.name} deployed in ${variant.name}. §7(${result.changed} blocks placed — use the tablet to undo it if needed.)`);
+    const r = result.reports ?? {};
+    const extras = [];
+    if (r.access?.fixed) extras.push(`${r.access.fixed} access route${r.access.fixed === 1 ? "" : "s"} opened`);
+    if (r.light?.added) extras.push(`${r.light.added} lights added`);
+    if (trial) {
+      TRIALS.set(player.id, session);
+      tell(player, `§6Full-size preview of ${structure.name} placed.§r Walk around and inside it, then use the tablet to §aKeep It§r, §cRemove It§r or §bRemove & Move It§r.`);
+    } else {
+      tell(player, `§a${structure.name} deployed in ${variant.name}. §7(${result.changed} blocks placed${extras.length ? "; " + extras.join(", ") : ""} — use the tablet to undo it if needed.)`);
+    }
     try {
       player.onScreenDisplay.setActionBar(`§a${structure.name} complete`);
     } catch {
@@ -431,6 +501,13 @@ async function constructPreview(player, session) {
   }
 }
 
+/** Access + lighting passes for a structure (bunkers keep their verified shafts; overlays are skipped). */
+export function postPassesFor(structure) {
+  if (structure.placementMode === "overlay") return [];
+  if (structure.placementMode === "excavation") return [["light", lightPass]];
+  return [["access", accessPass], ["light", lightPass]];
+}
+
 export function runBuilder(structureId, dimension, origin, rotation, variantId, options = {}) {
   switch (structureId) {
     case "guard_post":
@@ -443,7 +520,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildBaseHeadquarters(dimension, origin, rotation, variantId);
       break;
     case "hq_administration_wing":
-      buildHQAdministrationWing(dimension, origin, rotation, variantId);
+      buildHQAdministrationWingV2(dimension, origin, rotation, variantId);
       break;
     case "hq_command_rotunda":
       buildHQCommandRotunda(dimension, origin, rotation, variantId);
@@ -455,19 +532,19 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildLargeAircraftHangar(dimension, origin, rotation, variantId);
       break;
     case "army_barracks":
-      buildArmyBarracks(dimension, origin, rotation, variantId);
+      buildArmyBarracksV2(dimension, origin, rotation, variantId);
       break;
     case "army_armoury":
-      buildArmyArmoury(dimension, origin, rotation, variantId);
+      buildArmyArmouryV2(dimension, origin, rotation, variantId);
       break;
     case "army_vehicle_depot":
-      buildArmyVehicleDepot(dimension, origin, rotation, variantId);
+      buildArmyVehicleDepotV2(dimension, origin, rotation, variantId);
       break;
     case "army_medical_facility":
-      buildArmyMedicalFacility(dimension, origin, rotation, variantId);
+      buildArmyMedicalFacilityV2(dimension, origin, rotation, variantId);
       break;
     case "army_command_bunker":
-      buildArmyCommandBunker(dimension, origin, rotation, variantId);
+      buildArmyCommandBunkerV2(dimension, origin, rotation, variantId);
       break;
     case "army_defensive_checkpoint":
       buildArmyDefensiveCheckpoint(dimension, origin, rotation, variantId);
@@ -476,7 +553,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildArmyPerimeterWall(dimension, origin, rotation, variantId);
       break;
     case "officers_quarters":
-      buildOfficersQuarters(dimension, origin, rotation, variantId);
+      buildOfficersQuartersV2(dimension, origin, rotation, variantId);
       break;
     case "heavy_vehicle_maintenance_hangar":
       buildHeavyVehicleMaintenanceHangar(dimension, origin, rotation, variantId);
@@ -488,7 +565,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildWatchTower(dimension, origin, rotation, variantId);
       break;
     case "air_traffic_control_tower":
-      buildAirTrafficControlTower(dimension, origin, rotation, variantId);
+      buildAirTrafficControlTowerV2(dimension, origin, rotation, variantId);
       break;
     case "hardened_fighter_shelter":
       buildHardenedFighterShelter(dimension, origin, rotation, variantId);
@@ -500,7 +577,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildHelicopterHangar(dimension, origin, rotation, variantId);
       break;
     case "airfield_operations_building":
-      buildAirfieldOperationsBuilding(dimension, origin, rotation, variantId);
+      buildAirfieldOperationsBuildingV2(dimension, origin, rotation, variantId);
       break;
     case "radar_radome_facility":
       buildRadarRadomeFacility(dimension, origin, rotation, variantId);
@@ -533,7 +610,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildStandaloneLargeSatelliteDish(dimension, origin, rotation, variantId);
       break;
     case "logistics_hall":
-      buildLogisticsHall(dimension, origin, rotation, variantId);
+      buildLogisticsHallV2(dimension, origin, rotation, variantId);
       break;
     case "fuel_tank_farm":
       buildFuelTankFarm(dimension, origin, rotation, variantId);
@@ -566,22 +643,22 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildHelicopterApron(dimension, origin, rotation, variantId);
       break;
     case "naval_headquarters":
-      buildNavalHeadquarters(dimension, origin, rotation, variantId);
+      buildNavalHeadquartersV2(dimension, origin, rotation, variantId);
       break;
     case "naval_operations_centre":
-      buildAirfieldOperationsBuilding(dimension, origin, rotation, variantId);
+      buildNavalOperationsCentreV2(dimension, origin, rotation, variantId);
       break;
     case "harbour_control_tower":
-      buildHarbourControlTower(dimension, origin, rotation, variantId);
+      buildHarbourControlTowerV2(dimension, origin, rotation, variantId);
       break;
     case "sailors_barracks":
-      buildArmyBarracks(dimension, origin, rotation, variantId);
+      buildSailorsBarracksV2(dimension, origin, rotation, variantId);
       break;
     case "dockyard_logistics_warehouse":
-      buildLogisticsHall(dimension, origin, rotation, variantId);
+      buildDockyardLogisticsWarehouseV2(dimension, origin, rotation, variantId);
       break;
     case "ship_maintenance_workshop":
-      buildHeavyVehicleMaintenanceHangar(dimension, origin, rotation, variantId);
+      buildShipMaintenanceWorkshopV2(dimension, origin, rotation, variantId);
       break;
     case "pier_straight":
       buildPierStraight(dimension, origin, rotation, variantId);
@@ -614,7 +691,7 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildDocksideLoadingCrane(dimension, origin, rotation, variantId);
       break;
     case "naval_ammunition_bunker":
-      buildArmyArmoury(dimension, origin, rotation, variantId);
+      buildNavalAmmunitionBunkerV2(dimension, origin, rotation, variantId);
       break;
     case "coastal_defence_bunker":
       buildCoastalDefenceBunker(dimension, origin, rotation, variantId);
@@ -648,7 +725,9 @@ world.afterEvents.itemUse.subscribe((event) => {
       tell(player, `§eConstruction job in progress — ${busy.label} ${Math.floor(busy.fraction * 100)}%. Please wait.`);
       return;
     }
-    const task = ACTIVE_PREVIEWS.has(player.id) ? showPreviewControls(player) : showMainMenu(player);
+    const task = TRIALS.has(player.id) && !ACTIVE_PREVIEWS.has(player.id)
+      ? showTrialMenu(player)
+      : ACTIVE_PREVIEWS.has(player.id) ? showPreviewControls(player) : showMainMenu(player);
     task.catch((error) => {
       console.warn(`[CAVIRA] Construction UI error: ${error}`);
       tell(player, "§cThe Construction Tablet encountered an error. Check the content log.");
@@ -659,6 +738,7 @@ world.afterEvents.itemUse.subscribe((event) => {
 world.afterEvents.worldLoad.subscribe(() => cleanupLeftovers());
 
 installPreviewGuard((playerId) => {
+  TRIALS.delete(playerId);
   clearPreviewById(playerId);
   LAST_BUILDS.delete(playerId);
 });

@@ -1,3 +1,4 @@
+import { FACILITY_SIZES } from "./structures/facilities.js";
 import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { SUPER_HANGAR_SIZE } from "./structures/super_hangar.js";
 import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
@@ -82,7 +83,7 @@ export const STRUCTURES = {
     {
       id: "hq_administration_wing", name: "HQ Administration Wing",
       description: "Formal two-storey office wing with colonnaded frontage, shared offices and monitoring stations.",
-      size: { x: 27, y: 11, z: 17 }, foundationDepth: 2
+      size: FACILITY_SIZES.hq_administration_wing, foundationDepth: 2
     },
     {
       id: "hq_command_rotunda", name: "HQ Command Rotunda",
@@ -99,22 +100,22 @@ export const STRUCTURES = {
     {
       id: "army_barracks", name: "Army Barracks",
       description: "Reference-base 32-person accommodation hall with cyan privacy bays, central aisle and service rooms.",
-      size: { x: 23, y: 9, z: 41 }, foundationDepth: 2
+      size: FACILITY_SIZES.army_barracks, foundationDepth: 2
     },
     {
       id: "officers_quarters", name: "Officers' Quarters",
       description: "Eight private furnished rooms arranged around a central corridor, based on the smaller reference accommodation.",
-      size: { x: 19, y: 10, z: 25 }, foundationDepth: 2
+      size: FACILITY_SIZES.officers_quarters, foundationDepth: 2
     },
     {
       id: "army_armoury", name: "Army Armoury",
       description: "Reinforced armoury with secure issue counter, racks, ammunition stores, maintenance area and vault.",
-      size: { x: 21, y: 10, z: 17 }, foundationDepth: 2
+      size: FACILITY_SIZES.army_armoury, foundationDepth: 2
     },
     {
       id: "army_vehicle_depot", name: "Multi-Bay Vehicle Depot",
       description: "Reference-style open-front three-bay depot with servicing pits, tools, stores and marked lanes.",
-      size: { x: 29, y: 12, z: 23 }, foundationDepth: 2
+      size: FACILITY_SIZES.army_vehicle_depot, foundationDepth: 2
     },
     {
       id: "heavy_vehicle_maintenance_hangar", name: "Heavy Vehicle Maintenance Hangar",
@@ -124,12 +125,12 @@ export const STRUCTURES = {
     {
       id: "army_medical_facility", name: "Army Medical Facility",
       description: "Furnished field medical centre with reception, ward, examination rooms, pharmacy and staff station.",
-      size: { x: 23, y: 10, z: 19 }, foundationDepth: 2
+      size: FACILITY_SIZES.army_medical_facility, foundationDepth: 2
     },
     {
       id: "army_command_bunker", name: "Army Command Bunker",
       description: "Low-profile reinforced bunker with operations room, briefing space, communications and secure records.",
-      size: { x: 21, y: 8, z: 17 }, foundationDepth: 3
+      size: FACILITY_SIZES.army_command_bunker, foundationDepth: 2
     },
     {
       id: "army_defensive_checkpoint", name: "Defensive Checkpoint",
@@ -171,12 +172,12 @@ export const STRUCTURES = {
     {
       id: "airfield_operations_building", name: "Airfield Operations Building",
       description: "Flight-line dispatch, briefing and monitoring facility with server and console spaces.",
-      size: { x: 25, y: 10, z: 19 }, foundationDepth: 2
+      size: FACILITY_SIZES.airfield_operations_building, foundationDepth: 2
     },
     {
       id: "air_traffic_control_tower", name: "Air Traffic Control Tower",
       description: "Compact furnished ATC tower with access core, operations cab, glazing and roof equipment.",
-      size: { x: 13, y: 24, z: 13 }, foundationDepth: 2
+      size: FACILITY_SIZES.air_traffic_control_tower, foundationDepth: 2
     },
     {
       id: "watch_tower", name: "Airbase Watch Tower",
@@ -188,32 +189,32 @@ export const STRUCTURES = {
     {
       id: "naval_headquarters", name: "Naval Headquarters",
       description: "Two-zone fleet headquarters with command floor, administration offices and operational consoles.",
-      size: { x: 27, y: 12, z: 21 }, foundationDepth: 2
+      size: FACILITY_SIZES.naval_headquarters, foundationDepth: 2
     },
     {
       id: "naval_operations_centre", name: "Naval Operations Centre",
       description: "Secure maritime operations, briefing and monitoring facility based on the proven airfield operations layout.",
-      size: { x: 25, y: 10, z: 19 }, foundationDepth: 2
+      size: FACILITY_SIZES.naval_operations_centre, foundationDepth: 2
     },
     {
       id: "harbour_control_tower", name: "Harbour Control Tower",
       description: "Tall glazed harbour-control cab with access core, navigation consoles and roof equipment.",
-      size: { x: 15, y: 26, z: 15 }, foundationDepth: 2
+      size: FACILITY_SIZES.harbour_control_tower, foundationDepth: 2
     },
     {
       id: "sailors_barracks", name: "Sailors' Barracks",
       description: "Thirty-two-person naval accommodation hall with privacy bays, service rooms and central aisle.",
-      size: { x: 23, y: 9, z: 41 }, foundationDepth: 2
+      size: FACILITY_SIZES.sailors_barracks, foundationDepth: 2
     },
     {
       id: "dockyard_logistics_warehouse", name: "Dockyard Logistics Warehouse",
       description: "High-capacity dockside warehouse with secure racks, handling lane and inventory control.",
-      size: { x: 31, y: 12, z: 25 }, foundationDepth: 2
+      size: FACILITY_SIZES.dockyard_logistics_warehouse, foundationDepth: 2
     },
     {
       id: "ship_maintenance_workshop", name: "Ship Maintenance Workshop",
       description: "Tall multi-bay naval engineering hall with service pits, tools and overhead crane.",
-      size: { x: 35, y: 15, z: 27 }, foundationDepth: 2
+      size: FACILITY_SIZES.ship_maintenance_workshop, foundationDepth: 2
     },
     {
       id: "pier_straight", name: "Pier Straight",
@@ -268,7 +269,7 @@ export const STRUCTURES = {
     {
       id: "naval_ammunition_bunker", name: "Naval Ammunition Bunker",
       description: "Reinforced naval magazine with secure issue point, storage racks, maintenance area and vault.",
-      size: { x: 21, y: 10, z: 17 }, foundationDepth: 2
+      size: FACILITY_SIZES.naval_ammunition_bunker, foundationDepth: 2
     },
     {
       id: "coastal_defence_bunker", name: "Coastal Defence Bunker",
@@ -359,7 +360,7 @@ export const STRUCTURES = {
     {
       id: "logistics_hall", name: "Logistics & Armory Hall",
       description: "High-capacity secure warehouse with tall storage racks, handling lane and inventory control desk.",
-      size: { x: 31, y: 12, z: 25 }, foundationDepth: 2
+      size: FACILITY_SIZES.logistics_hall, foundationDepth: 2
     },
     {
       id: "fuel_tank_farm", name: "Airbase Fuel Tank Farm",

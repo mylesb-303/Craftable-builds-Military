@@ -107,8 +107,7 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
         c.clear(xa, w, z1, xb, w + 4, z2);
         // open front with frame posts; mezzanine rail on the upper level
         for (const z of [z1 - 1, z2 + 1]) c.fill(openX, w - 1, z, openX, w + 5, z, B.tile);
-        if (level === 1) for (let z = z1; z <= z2; z++) c.set(openX, w, z, B.bars);
-        else c.fill(openX, w + 5, z1, openX, w + 5, z2, B.yellow);
+        if (level === 0) c.fill(openX, w + 5, z1, openX, w + 5, z2, B.yellow);
         furnishRoom(c, {
           x1: xa, z1, x2: xb, z2, walk: w, h: 5,
           type: bayTypes[(i + level * 4) % bayTypes.length],
@@ -123,7 +122,27 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
       c.set(sx, WALK + k, 13 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
       c.fill(sx, WALK - 1, 13 - k, sx, WALK + k - 1, 13 - k, B.concrete);
     }
-    c.fill(side === "west" ? 11 : 69, WALK + 5, 6, side === "west" ? 12 : 69, WALK + 5, 13, B.andesite);
+    // continuous mezzanine walkway linking the stair to every upper bay
+    const deckIn = side === "west" ? 12 : 68; // beside the bay fronts
+    const deckOut = side === "west" ? 13 : 67; // hangar side
+    const railX = side === "west" ? 14 : 66;
+    const deckEnd = 14 + 9 * 9 - 2;
+    for (let z = 6; z <= deckEnd; z++) {
+      c.set(deckOut, WALK + 5, z, z % 4 === 0 ? B.sea : B.andesite);
+      if (z >= 14) c.set(deckIn, WALK + 5, z, B.andesite);
+      c.set(railX, WALK + 6, z, z % 6 === 0 ? B.yellow : B.rail);
+      // support posts down to the floor
+      if (z % 9 === 4) c.fill(deckOut, WALK, z, deckOut, WALK + 4, z, B.tile);
+    }
+    c.fill(deckIn, WALK + 5, 6, deckOut, WALK + 5, 7, B.andesite);
+    c.set(railX, WALK + 6, 6, B.rail);
+    // personnel door in the side wall near the rear corner
+    const wallX = side === "west" ? 0 : 80;
+    c.clear(wallX, WALK, 3, wallX, WALK + 2, 4);
+    c.set(wallX, WALK + 3, 2, B.sea);
+    c.set(wallX, WALK + 3, 5, B.sea);
+    // light band above the bays
+    for (let z = 10; z < frontZ - 4; z += 4) c.set(side === "west" ? 10 : 70, WALK + 12, z, B.sea);
   }
 
   // --- rear block: workshop / control / storage ------------------------
@@ -176,6 +195,22 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
     const y = roofY(x) - 2;
     c.set(x, y, z, B.sea);
   }
+
+  // --- lighting: high-bay pendants hung on rods from the trusses, and a flush floor grid ---
+  for (let z = 16; z < frontZ - 4; z += 8) {
+    for (const x of [18, 26, 34, 46, 54, 62]) {
+      const top = roofY(x) - 2;
+      const lampY = WALK + 15; // above a B-52 fin (12.4 m) with clearance
+      for (let y = lampY + 1; y <= top; y++) c.set(x, y, z, B.bars);
+      c.set(x, lampY, z, B.sea);
+      c.set(x, lampY + 1, z, B.tile);
+    }
+  }
+  for (let z = 20; z <= 92; z += 6) for (const x of [17, 23, 29, 35, 45, 51, 57, 63]) c.set(x, WALK - 1, z, B.sea);
+  // under-deck and bay-front lighting at ground level
+  for (let z = 14; z < frontZ - 8; z += 5) { c.set(11, WALK + 4, z, B.sea); c.set(69, WALK + 4, z, B.sea); }
+  // door-header floodlights inside the opening
+  for (let x = DOOR_X1 + 2; x <= DOOR_X2 - 2; x += 6) c.set(x, DOOR_TOP - 1, frontZ - 1, B.sea);
 
   // --- ground equipment ----------------------------------------------------
   // tow tractor

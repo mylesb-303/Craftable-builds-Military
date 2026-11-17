@@ -52,14 +52,20 @@ export function opsBuilding(c, o) {
   c.set(doorX - 2, walk + 2, z2 + 1, c.B.sea);
   c.set(doorX + 2, walk + 2, z2 + 1, c.B.sea);
   c.fill(doorX - 1, walk - 1, z2 + 1, doorX + 1, walk - 1, z2 + 2, c.B.andesite);
-  // internal stairs along the west wall rising north
-  const sx = x1 + 1;
-  for (let k = 0; k < n - 1 + (o.roofDeck ? 1 : 0); k++) {
+  // internal switchback stairs in the west aisle (columns x1+1 / x1+2):
+  // even flights climb north in x1+1, odd flights climb south in x1+2, so each
+  // landing sits right beside the start of the next flight.
+  const flights = n - 1 + (o.roofDeck ? 1 : 0);
+  for (let k = 0; k < flights; k++) {
     const w = walk + fh * k;
-    const startZ = z2 - 2;
-    stairFlight(c, sx, startZ, "north", w, fh);
-    c.clear(sx, w + fh - 1, startZ - fh + 1, sx, w + fh - 1, startZ);
-    for (let z = startZ - fh + 1; z <= startZ; z++) c.set(sx + 1, w + fh, z, c.B.bars);
+    const north = k % 2 === 0;
+    const sx = x1 + (north ? 1 : 2);
+    const startZ = north ? z2 - 2 : z2 - 1 - fh;
+    stairFlight(c, sx, startZ, north ? "north" : "south", w, fh);
+    // keep the landing and the turn clear at the upper level
+    const landZ = north ? startZ - fh : startZ + fh;
+    c.clear(x1 + 1, w + fh, landZ, x1 + 2, w + fh + 2, landZ);
+    c.fill(x1 + 1, w + fh - 1, landZ, x1 + 2, w + fh - 1, landZ, c.V.floor);
   }
   // furnish
   for (let k = 0; k < n; k++) {
@@ -68,7 +74,7 @@ export function opsBuilding(c, o) {
     const rooms = Array.isArray(spec) ? spec : [{ u1: x1 + 3, u2: x2 - 1, type: spec }];
     for (const r of rooms) {
       if (!r.type || r.type === "none") continue;
-      furnishRoom(c, { x1: r.u1, z1: z1 + 1, x2: r.u2, z2: z2 - 2, walk: w, h: fh - 1, type: r.type, door: "south", doorU: Math.floor((r.u2 - r.u1) / 2) });
+      furnishRoom(c, { x1: Math.max(r.u1, x1 + 3), z1: z1 + 1, x2: r.u2, z2: z2 - 2, walk: w, h: fh - 1, type: r.type, door: "south", doorU: Math.floor((r.u2 - r.u1) / 2), wallLights: false });
     }
   }
   if (o.roofDeck) {

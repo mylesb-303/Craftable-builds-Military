@@ -57,7 +57,7 @@ export function furnishRoom(c, room) {
 
   // ---- lighting: ceiling grid + wall accents -------------------------------
   for (let u = 1; u < F.W - 1; u += 4) for (let v = 1; v < F.L - 1; v += 4) set2(u, H, v, B.sea);
-  for (let v = 1; v < F.L - 1; v += 4) { set2(-1, 3, v, B.sea); set2(F.W, 3, v, B.sea); }
+  if (room.wallLights !== false) for (let v = 1; v < F.L - 1; v += 4) { set2(-1, 3, v, B.sea); set2(F.W, 3, v, B.sea); }
 
   const screenWall = (u1, u2, dy1, dy2) => {
     for (let u = u1; u <= u2; u++) for (let dy = dy1; dy <= dy2; dy++) {
@@ -203,7 +203,7 @@ export function furnishRoom(c, room) {
       break;
     }
     case "servers": {
-      for (let v = 0; v < F.L; v++) { set2(-1, 3, v, B.sea); }
+      if (room.wallLights !== false) for (let v = 0; v < F.L; v++) { set2(-1, 3, v, B.sea); }
       for (let v = 1; v < F.L - 1; v += 2) {
         for (let u = 0; u < F.W; u++) {
           if (aisle(u)) continue;

@@ -44,6 +44,8 @@ jobs:
           node dircheck.mjs | grep -q PASS
           node snapcheck.mjs | grep -q "SNAP PASS"
           node chunkcheck.mjs
+          node passes.mjs | tee passes.txt
+          ! awk '{split($0,a,"dark -> "); split(a[2],b," "); if (b[1]!="0" && $0 !~ /overlay/) bad=1} END{exit !bad}' passes.txt
           for b in small_nuclear_bunker medium_nuclear_bunker large_nuclear_bunker strategic_operations_bunker; do
             node inspect.mjs $b | tee walk.txt
             grep -q "FLOORS OK" walk.txt
@@ -55,7 +57,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.6.0_Airfield_Dishes_ChunkLoading.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.7.0_Lighting_Access_Previews.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -68,5 +70,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.6.0-Airfield-Dishes-ChunkLoading
-          path: dist/Cavira_Craftable_Builds_1.6.0_Airfield_Dishes_ChunkLoading.mcaddon
+          name: Cavira-Craftable-Builds-1.7.0-Lighting-Access-Previews
+          path: dist/Cavira_Craftable_Builds_1.7.0_Lighting_Access_Previews.mcaddon
