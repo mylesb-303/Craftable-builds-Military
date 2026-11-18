@@ -38,15 +38,37 @@ export function tileBounds(bounds) {
   return tiles;
 }
 const IN_USE = new Map(); // name -> owner key
+// Least-recently-released first. Bedrock does not always finish removing a
+// ticking area before the next command runs, so re-adding the name that was
+// just removed fails ("already exists"). That is what stopped sectioned builds
+// after section 1 in v1.7.2: every section now gets a different pool name.
+const RELEASE_ORDER = [...POOL];
+let lastError = "";
+
+/** Last ticking-area error, for player-facing messages. */
+export function lastLoadError() {
+  return lastError;
+}
 
 function run(dimension, command) {
   try {
     dimension.runCommand(command);
     return true;
   } catch (error) {
-    console.warn(`[CAVIRA] ${command} failed: ${error}`);
+    lastError = String(error?.message ?? error);
+    console.warn(`[CAVIRA] ${command} failed: ${lastError}`);
     return false;
   }
+}
+
+function freeNames() {
+  return RELEASE_ORDER.filter((n) => !IN_USE.has(n));
+}
+
+function markReleased(name) {
+  const i = RELEASE_ORDER.indexOf(name);
+  if (i >= 0) RELEASE_ORDER.splice(i, 1);
+  RELEASE_ORDER.push(name);
 }
 
 function sampleLoaded(dimension, bounds) {
@@ -76,25 +98,35 @@ export async function ensureLoaded(dimension, bounds, ownerKey, onWait) {
   if (sampleLoaded(dimension, bounds)) return "";
   release(dimension, ownerKey);
   const tiles = tileBounds(bounds);
-  const free = POOL.filter((n) => !IN_USE.has(n));
-  if (tiles.length > free.length) return undefined;
   const names = [];
-  for (let i = 0; i < tiles.length; i++) {
-    const { min, max } = tiles[i];
-    if (!run(dimension, `tickingarea add ${min.x} ${min.y} ${min.z} ${max.x} ${max.y} ${max.z} ${free[i]} true`)) {
+  for (const { min, max } of tiles) {
+    let added = false;
+    // try up to 3 different free names, giving Bedrock a moment between attempts
+    for (let attempt = 0; attempt < 3 && !added; attempt++) {
+      const name = freeNames()[0];
+      if (!name) break;
+      if (run(dimension, `tickingarea add ${min.x} ${min.y} ${min.z} ${max.x} ${max.y} ${max.z} ${name} true`)) {
+        IN_USE.set(name, ownerKey);
+        names.push(name);
+        added = true;
+      } else {
+        markReleased(name); // skip it for now; it may still be mid-removal
+        await system.waitTicks(10);
+      }
+    }
+    if (!added) {
       release(dimension, ownerKey);
       return undefined;
     }
-    IN_USE.set(free[i], ownerKey);
-    names.push(free[i]);
   }
-  const name = names.join(",");
   onWait?.();
-  const polls = 60 * Math.max(1, Math.min(3, tiles.length));
+  // far-away sites can take a while to generate and load on tablets/consoles
+  const polls = 160 * Math.max(1, Math.min(3, tiles.length)); // 40 s per tile, max 120 s
   for (let i = 0; i < polls; i++) {
     await system.waitTicks(5);
-    if (sampleLoaded(dimension, bounds)) return name;
+    if (sampleLoaded(dimension, bounds)) return names.join(",");
   }
+  lastError = "the area did not finish loading in time";
   release(dimension, ownerKey);
   return undefined;
 }
@@ -104,6 +136,7 @@ export function release(dimension, ownerKey) {
   for (const [name, owner] of IN_USE) {
     if (owner !== ownerKey) continue;
     IN_USE.delete(name);
+    markReleased(name);
     run(dimension, `tickingarea remove ${name}`);
   }
 }

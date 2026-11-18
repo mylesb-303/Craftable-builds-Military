@@ -19,7 +19,7 @@ import { constructStaged, restoreStaged, worldBounds } from "./construction_engi
 import { sectionPlan, sectionBounds } from "./sections.js";
 import { accessPass, lightPass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
-import { ensureLoaded, release, cleanupLeftovers } from "./chunk_loader.js";
+import { ensureLoaded, lastLoadError, release, cleanupLeftovers } from "./chunk_loader.js";
 import { VARIANTS, getVariant } from "./variants.js";
 import { worldDir } from "./kit.js";
 import { rotateXZ, toWorldLocation } from "./placement.js";
@@ -265,12 +265,20 @@ async function showMainMenu(player) {
   const form = new ActionFormData()
     .title("CAVIRA Construction Tablet")
     .body("Select an infrastructure category, or undo your most recent construction.");
+  const resumable = LAST_BUILDS.get(player.id);
+  const canResume = Boolean(resumable?.resume);
+  if (canResume) form.button(`§e▶ Resume ${resumable.structureName}\n§7section ${resumable.snapshots.length + 1} of ${resumable.resume.plan.length}`);
   for (const category of CATEGORIES) form.button(`${category.icon} §f${category.name}`);
   form.button("§c↶ Undo Last Build");
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
-  if (response.selection === CATEGORIES.length) return undoLastBuild(player);
-  await showCategoryMenu(player, CATEGORIES[response.selection].id);
+  let sel = response.selection;
+  if (canResume) {
+    if (sel === 0) return resumeSections(player);
+    sel -= 1;
+  }
+  if (sel === CATEGORIES.length) return undoLastBuild(player);
+  await showCategoryMenu(player, CATEGORIES[sel].id);
 }
 
 async function showCategoryMenu(player, categoryId) {
@@ -468,16 +476,16 @@ async function showPreviewControls(player) {
  * Builds a very large structure section by section, each with its own single
  * temporary ticking area, nearest section first.
  */
-export async function constructSections(player, dimension, structure, origin, rotation, plan, buildFn, onProgress) {
-  const snapshots = [];
+export async function constructSections(player, dimension, structure, origin, rotation, plan, buildFn, onProgress, start = 0, done = []) {
+  const snapshots = [...done];
   const reports = {};
   let changed = 0;
-  for (let i = 0; i < plan.length; i++) {
+  for (let i = start; i < plan.length; i++) {
     const [z1, z2] = plan[i];
     const bounds = sectionBounds(origin, structure.size, rotation, z1, z2);
     const name = await ensureLoaded(dimension, bounds, player.id);
     if (name === undefined) {
-      return { ok: false, snapshots, reason: `section ${i + 1} could not be loaded (the world may already have its maximum of 10 ticking areas — check /tickingarea list).` };
+      return { ok: false, snapshots, reason: `section ${i + 1} could not be loaded (${lastLoadError() || "unknown error"}). If /tickingarea list shows 10 areas, remove some and try again.` };
     }
     const result = await constructStaged(dimension, buildFn([z1, z2]),
       (label, f) => onProgress(`${label} §7(section ${i + 1}/${plan.length})§b`, (i + f) / plan.length),
@@ -492,6 +500,49 @@ export async function constructSections(player, dimension, structure, origin, ro
     }
   }
   return { ok: true, snapshots, changed, reports };
+}
+
+/** Continues a sectioned build that stopped part-way (e.g. a section took too long to load). */
+async function resumeSections(player) {
+  const record = LAST_BUILDS.get(player.id);
+  const job = record?.resume;
+  if (!job) return;
+  if (BUSY.has(player.id)) {
+    tell(player, "§eWait for the current construction job to finish first.");
+    return;
+  }
+  const { dimension, structure, origin, rotation, plan, buildFn, variant } = job;
+  BUSY.set(player.id, { label: "Resuming", fraction: record.snapshots.length / plan.length });
+  tell(player, `§7Resuming ${structure.name} from section ${record.snapshots.length + 1} of ${plan.length}…`);
+  let lastShown = -1;
+  const onProgress = (label, fraction) => {
+    BUSY.set(player.id, { label, fraction });
+    const pct = Math.floor(fraction * 100);
+    if (pct === lastShown) return;
+    lastShown = pct;
+    try {
+      player.onScreenDisplay.setActionBar(`§b${label}: §f${structure.name} §7${pct}%`);
+    } catch {
+      // ignore
+    }
+  };
+  try {
+    const result = await constructSections(player, dimension, structure, origin, rotation, plan, buildFn, onProgress, record.snapshots.length, record.snapshots);
+    if (!result.ok) {
+      LAST_BUILDS.set(player.id, { ...record, snapshots: result.snapshots });
+      tell(player, `§eConstruction paused after ${result.snapshots.length} of ${plan.length} sections:§r ${result.reason} §7Choose §e▶ Resume§7 again, or Undo.`);
+      return;
+    }
+    LAST_BUILDS.set(player.id, { snapshots: result.snapshots, structureName: structure.name, variantName: variant.name });
+    if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
+    tell(player, `§a${structure.name} completed (${plan.length} sections).`);
+  } catch (error) {
+    console.warn(`[CAVIRA] Resume error: ${error}`);
+    tell(player, "§cResume failed. Check the content log.");
+  } finally {
+    BUSY.delete(player.id);
+    release(dimension, player.id);
+  }
 }
 
 async function constructPreview(player, session, trial = false) {
@@ -534,8 +585,11 @@ async function constructPreview(player, session, trial = false) {
     const snapshots = result.snapshots ?? (result.snapshot ? [result.snapshot] : []);
     if (!result.ok) {
       if (snapshots.length) {
-        LAST_BUILDS.set(player.id, { snapshots, structureName: structure.name, variantName: variant.name });
-        tell(player, `§eConstruction stopped after ${snapshots.length} of ${plan.length} sections:§r ${result.reason} §7Use the tablet's Undo to remove the part that was built.`);
+        LAST_BUILDS.set(player.id, {
+          snapshots, structureName: structure.name, variantName: variant.name,
+          resume: { dimension, structure, origin, rotation, plan, buildFn, variant }
+        });
+        tell(player, `§eConstruction paused after ${snapshots.length} of ${plan.length} sections:§r ${result.reason} §7Open the tablet and choose §e▶ Resume§7 to carry on, or Undo to remove the part that was built.`);
       } else {
         tell(player, `§cConstruction cancelled:§r ${result.reason}`);
       }
