@@ -49,6 +49,8 @@ jobs:
           node loadsim.mjs | tee loadsim.txt
           grep -q "LOADSIM PASS" loadsim.txt
           grep -q "RESUME PASS" loadsim.txt
+          SLICE_MS=40 node slicecheck.mjs | tee slices.txt
+          grep -q "SLICE PASS" slices.txt
           node passes.mjs | tee passes.txt
           ! awk '{split($0,a,"dark -> "); split(a[2],b," "); if (b[1]!="0" && $0 !~ /overlay/) bad=1} END{exit !bad}' passes.txt
           for b in small_nuclear_bunker medium_nuclear_bunker large_nuclear_bunker strategic_operations_bunker; do
@@ -62,7 +64,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.7.3_Runway_Section_Fix.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.7.4_Lighting_Fix.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -76,4 +78,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Cavira-Craftable-Builds-1.7.0-Lighting-Access-Previews
-          path: dist/Cavira_Craftable_Builds_1.7.3_Runway_Section_Fix.mcaddon
+          path: dist/Cavira_Craftable_Builds_1.7.4_Lighting_Fix.mcaddon

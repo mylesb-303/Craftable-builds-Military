@@ -99,14 +99,21 @@ function view(compiled) {
     return !i || !i.passable || i.climb; // unwritten = terrain
   };
   const standable = (x, y, z) => inside(x, y, z) && passable(x, y, z) && passable(x, y + 1, z) && (solidBelow(x, y, z) || !!at(x, y, z)?.climb);
+  // 0 = unknown, 1 = open sky, 2 = roofed (memoised: the passes ask for the same cells many times)
+  const roofMemo = new Uint8Array(W * H * D);
   const roofed = (x, y, z) => {
+    const k = (y * D + z) * W + x;
+    if (roofMemo[k]) return roofMemo[k] === 2;
+    let r = false;
     for (let yy = y + 2; yy < Math.min(H, y + 18); yy++) {
       const i = at(x, yy, z);
-      if (i && !i.air && !i.id.includes("light_block")) return true;
+      if (i && !i.air && !i.id.includes("light_block")) { r = true; break; }
     }
-    return false;
+    roofMemo[k] = r ? 2 : 1;
+    return r;
   };
   const set = (x, y, z, perm, attachSeq) => {
+    for (let yy = Math.max(0, y - 18); yy < y; yy++) roofMemo[(yy * D + z) * W + x] = 0;
     const k = idx(x, y, z);
     const id = palette.id(perm);
     grid[k] = id;
@@ -144,7 +151,7 @@ function* reach(v) {
       }
     }
     if (at(x, y, z)?.climb || at(x, y - 1, z)?.climb) { push(x, y + 1, z); push(x, y - 1, z); }
-    if (++n % 2048 === 0) yield;
+    if (++n % 512 === 0) yield;
   }
   return seen;
 }
@@ -155,6 +162,7 @@ function* unreachedComponents(v, seen) {
   const comps = [];
   let n = 0;
   for (let y = 1; y < H - 1; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+    if (++n % 1024 === 0) yield;
     const k = idx(x, y, z);
     if (seen[k] || comp[k] || !standable(x, y, z)) continue;
     const cells = [];
@@ -163,6 +171,7 @@ function* unreachedComponents(v, seen) {
     while (st.length) {
       const cz = st.pop(), cy = st.pop(), cx = st.pop();
       cells.push([cx, cy, cz]);
+      if (++n % 1024 === 0) yield;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = cx + dx, nz = cz + dz;
         if (nx < 0 || nz < 0 || nx >= W || nz >= D) continue;
@@ -173,18 +182,22 @@ function* unreachedComponents(v, seen) {
       }
     }
     comps.push(cells);
-    if (++n % 256 === 0) yield;
   }
   // indoor = most of the area has a roof (skips dish bowls, mast tops and open roofs)
-  return comps
-    .filter((c) => {
-      if (c.length < 12) return false;
-      const xs = c.map((p) => p[0]), zs = c.map((p) => p[2]);
-      // 1-block strips are rack/girder/ledge tops, not rooms
-      if (Math.max(...xs) === Math.min(...xs) || Math.max(...zs) === Math.min(...zs)) return false;
-      return c.filter(([cx, cy, cz]) => roofed(cx, cy, cz)).length >= 0.6 * c.length;
-    })
-    .sort((a, b) => b.length - a.length);
+  const indoor = [];
+  for (const c of comps) {
+    if (c.length < 12) continue;
+    let x1 = Infinity, x2 = -Infinity, z1 = Infinity, z2 = -Infinity, roofs = 0;
+    for (const [cx, cy, cz] of c) {
+      if (cx < x1) x1 = cx; if (cx > x2) x2 = cx; if (cz < z1) z1 = cz; if (cz > z2) z2 = cz;
+      if (roofed(cx, cy, cz)) roofs++;
+      if (++n % 1024 === 0) yield;
+    }
+    // 1-block strips are rack/girder/ledge tops, not rooms
+    if (x1 === x2 || z1 === z2) continue;
+    if (roofs >= 0.6 * c.length) indoor.push(c);
+  }
+  return indoor.sort((a, b) => b.length - a.length);
 }
 
 function tryDoor(v, seen, cells) {
@@ -276,7 +289,7 @@ export function* lightPass(compiled, report = {}) {
         L[k] = lvl - 1;
         q.push(nx, ny, nz, lvl - 1);
       }
-      if (++n % 4096 === 0) yield;
+      if (++n % 1024 === 0) yield;
     }
   };
   const addSource = (x, y, z, lvl) => {
@@ -288,7 +301,7 @@ export function* lightPass(compiled, report = {}) {
   for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
     const i = at(x, y, z);
     if (i && i.emit) addSource(x, y, z, i.emit);
-    if (++n % 8192 === 0) yield;
+    if (++n % 2048 === 0) yield;
   }
   yield* spread();
 
@@ -304,11 +317,12 @@ export function* lightPass(compiled, report = {}) {
   const target = (x, y, z) => (v.roofed(x, y, z) ? INDOOR_TARGET : OUTDOOR_TARGET);
   for (let y = 1; y < H - 1; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
     if (spawnSpot(x, y, z) && L[idx(x, y, z)] < target(x, y, z)) darkBefore++;
+    if (++n % 1024 === 0) yield;
   }
-  yield;
   // two sweeps: a coarse lattice first (even spacing), then everything left
   for (const step of [5, 1]) {
     for (let y = 1; y < H - 1; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+      if (++n % 1024 === 0) yield;
       if (step > 1 && (x % step !== 2 || z % step !== 2)) continue;
       if (!spawnSpot(x, y, z)) continue;
       const t = target(x, y, z);
@@ -345,6 +359,7 @@ export function* lightPass(compiled, report = {}) {
   let darkAfter = 0;
   for (let y = 1; y < H - 1; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
     if (spawnSpot(x, y, z) && L[idx(x, y, z)] < OUTDOOR_TARGET) darkAfter++;
+    if (++n % 1024 === 0) yield;
   }
   Object.assign(report, { added, darkBefore, darkAfter });
   return report;
