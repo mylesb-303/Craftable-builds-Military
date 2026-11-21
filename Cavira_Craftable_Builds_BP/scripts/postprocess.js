@@ -268,6 +268,78 @@ export function* accessPass(compiled, report = {}) {
   return report;
 }
 
+/** Count of opaque, unlit horizontal neighbours — 3+ means (x, y, z) sits inside a wall, floor or ceiling surface. */
+function solidAround(v, x, y, z) {
+  let n = 0;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const i = v.at(x + dx, y, z + dz);
+    if (i && !i.transparent && !i.passable && i.emit === 0) n++;
+  }
+  return n;
+}
+
+const FIXTURE = /sea_lantern|froglight|shroomlight|glowstone|redstone_lamp/;
+
+/**
+ * Fixture pass (v1.8): lights must be built into the structure. Any light block
+ * that hangs off a wall or ceiling, or floats, is moved into the surface it is
+ * mounted on (recessed); one with nothing to sit in becomes an invisible light
+ * block so the area stays lit. Returns { recessed, hidden }.
+ */
+export function* fixturePass(compiled, report = {}) {
+  const v = view(compiled);
+  const { W, H, D, at } = v;
+  const sea = BlockPermutation.resolve("minecraft:sea_lantern");
+  const air = BlockPermutation.resolve("minecraft:air");
+  const hiddenLight = lightPermutation();
+  const open = (x, y, z) => { const i = at(x, y, z); return !!i && i.transparent; };
+  const recessable = (x, y, z) => {
+    const i = at(x, y, z);
+    return !!i && !i.transparent && !i.passable && i.emit === 0 && !/door|stairs|slab|chest|barrel|furnace|smoker|bed|table|lectern|anvil|stand|terracotta|_planks|crafting|loom|bookshelf|scaffold|ladder/.test(i.id);
+  };
+  let recessed = 0, hidden = 0, n = 0;
+  for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+    if (++n % 1024 === 0) yield;
+    const i = at(x, y, z);
+    if (!i || !FIXTURE.test(i.id) || !open(x, y - 1, z)) continue;
+    let sideOpen = 0;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (open(x + dx, y, z + dz)) sideOpen++;
+    if (sideOpen < 3) continue;
+    const perm = compiled.palette.list[compiled.grid[v.idx(x, y, z)]];
+    // 1) hanging under a ceiling: set it into the ceiling instead
+    if (recessable(x, y + 1, z) && solidAround(v, x, y + 1, z) >= 2) {
+      v.set(x, y + 1, z, perm ?? sea);
+      v.set(x, y, z, air);
+      recessed++;
+      continue;
+    }
+    // 2) mounted on a wall: set it into the wall behind it
+    let moved = false;
+    // the wall block must itself be embedded once the light moves in (not a thin strip open on 3 sides)
+    const embedded = (tx, tz) => {
+      if (!open(tx, y - 1, tz)) return true;
+      let o = 0;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if ((tx + dx === x && tz + dz === z) || open(tx + dx, y, tz + dz)) o++;
+      return o < 3;
+    };
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (recessable(x + dx, y, z + dz) && embedded(x + dx, z + dz)) {
+        v.set(x + dx, y, z + dz, perm ?? sea);
+        v.set(x, y, z, air);
+        recessed++;
+        moved = true;
+        break;
+      }
+    }
+    if (moved) continue;
+    // 3) nothing to sit in: keep the light, lose the floating block
+    v.set(x, y, z, hiddenLight ?? air);
+    hidden++;
+  }
+  Object.assign(report, { recessed, hidden });
+  return report;
+}
+
 /** Light pass. Returns { added, darkBefore, darkAfter }. */
 export function* lightPass(compiled, report = {}) {
   const v = view(compiled);
@@ -333,7 +405,7 @@ export function* lightPass(compiled, report = {}) {
         for (let yy = y + 2; yy <= Math.min(H - 1, y + 7); yy++) {
           const i = at(x, yy, z);
           if (!i || i.air || i.passable) continue;
-          if (!i.transparent && i.emit === 0 && at(x, yy - 1, z)?.air) {
+          if (!i.transparent && i.emit === 0 && at(x, yy - 1, z)?.air && solidAround(v, x, yy, z) >= 3) {
             v.set(x, yy, z, sea);
             addSource(x, yy, z, 15);
             placed = true;

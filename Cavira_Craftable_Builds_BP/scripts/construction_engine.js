@@ -17,7 +17,7 @@ import { BlockPermutation, system } from "@minecraft/server";
 //   phase 2  attachables, write order    doors, ladders, lanterns, plants, scaffolding
 // ---------------------------------------------------------------------------
 
-const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|scaffolding|end_rod|lightning_rod|light_block)/;
+const ATTACHABLE = /(door|ladder|pressure_plate|torch|lantern|button|lever|_sign|banner|carpet|rail|vine|flower|sapling|fern|short_grass|tall_grass|tallgrass|double_plant|dandelion|poppy|tulip|orchid|allium|bluet|daisy|cornflower|lily|rose|peony|lilac|sunflower|bush|snow_layer|redstone_wire|repeater|comparator|trapdoor|_bed|:bed$|candle|seagrass|kelp|reeds|sugar_cane|cactus|mushroom$|_coral$|_fan$|wall_fan|frame|painting|bell|chain$|cocoa|wheat|carrots|potatoes|beetroot|nether_wart|pointed_dripstone|glow_lichen|hanging_roots|spore_blossom|pitcher|torchflower|azalea$|scaffolding|end_rod|lightning_rod|light_block)/;
 
 const OPS_PER_YIELD = 48;
 const SCAN_PER_YIELD = 4096;

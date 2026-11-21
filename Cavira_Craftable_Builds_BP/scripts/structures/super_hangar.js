@@ -22,6 +22,9 @@ const APEX = 36;
 const DOOR_X1 = 8;
 const DOOR_X2 = 72;
 const DOOR_TOP = WALK + 23;
+// Aircraft envelope: nothing may stand inside this box (v1.8). 61 wide between
+// the bay fronts, full door height, from the rear equipment line to the door.
+export const SUPER_HANGAR_ENVELOPE = { x1: 10, x2: 70, y1: WALK, y2: DOOR_TOP - 1, z1: 22, z2: LEN - 1 };
 
 function roofY(x) {
   const t = (x - CX) / 40.5;
@@ -51,8 +54,8 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
       for (let yy = yMin; yy <= y; yy++) c.set(x, yy, z, rib ? B.tile : panel);
       // roof skylight strip along the crown
       if (Math.abs(x - CX) <= 1 && z % 4 === 2 && z > 2 && z < frontZ - 2) c.set(x, y, z, B.sea);
-      // yellow internal truss under each rib
-      if (rib && x > 1 && x < 79) c.set(x, y - 1, z, B.yellow);
+      // yellow internal truss under each rib, with high-bay lights built into it
+      if (rib && x > 1 && x < 79) c.set(x, y - 1, z, x % 10 === 0 ? B.sea : B.yellow);
     }
   }
   // side walls with stepped buttress shoulders and ribbon windows
@@ -76,11 +79,11 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
     const inDoor = x >= DOOR_X1 && x <= DOOR_X2;
     for (let y = WALK; y < roofY(x); y++) {
       if (inDoor && y < DOOR_TOP) continue;
-      c.set(x, y, frontZ, y === DOOR_TOP ? B.yellow : y === DOOR_TOP + 1 ? B.black : V.wall);
+      // header beam: yellow band with flush floodlights built into its soffit
+      const header = y === DOOR_TOP ? (inDoor && (x - DOOR_X1) % 4 === 2 ? B.sea : B.yellow) : y === DOOR_TOP + 1 ? B.black : V.wall;
+      c.set(x, y, frontZ, header);
     }
   }
-  // door header lights
-  for (let x = DOOR_X1; x <= DOOR_X2; x += 4) c.set(x, DOOR_TOP - 1, frontZ, B.sea);
   // retracted door-leaf pockets: stacked leaves either side of the opening
   for (const [xa, xb] of [[2, 7], [73, 78]]) {
     for (let z = frontZ - 4; z <= frontZ; z++) for (let x = xa; x <= xb; x++) for (let y = WALK; y < DOOR_TOP; y++) {
@@ -92,9 +95,10 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
   // --- side maintenance bays (two storeys) -------------------------------
   const bayTypes = ["workshop", "storage", "armoury", "workshop", "supplies", "office", "storage", "workshop", "supplies"];
   for (const side of ["west", "east"]) {
-    const xa = side === "west" ? 2 : 70;
-    const xb = side === "west" ? 10 : 78;
-    const openX = side === "west" ? 11 : 69; // face toward the hangar floor
+    const xa = side === "west" ? 2 : 72;
+    const xb = side === "west" ? 8 : 78;
+    const openX = side === "west" ? 9 : 71; // bay fronts: the edge of the aircraft envelope
+    const galleryX = side === "west" ? 8 : 72; // upper walkway runs inside the bays
     for (let i = 0; i < 9; i++) {
       const z1 = 14 + i * 9;
       const z2 = z1 + 7;
@@ -105,9 +109,14 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
         c.fill(xa, w + 5, z1 - 1, xb, w + 5, z2 + 1, B.andesite);
         for (const z of [z1 - 1, z2 + 1]) c.fill(xa, w, z, xb, w + 4, z, B.lightGrey);
         c.clear(xa, w, z1, xb, w + 4, z2);
-        // open front with frame posts; mezzanine rail on the upper level
+        // open front with frame posts; the upper floor's edge carries a lit fascia
         for (const z of [z1 - 1, z2 + 1]) c.fill(openX, w - 1, z, openX, w + 5, z, B.tile);
-        if (level === 0) c.fill(openX, w + 5, z1, openX, w + 5, z2, B.yellow);
+        if (level === 0) for (let z = z1; z <= z2; z++) c.set(openX, w + 5, z, (z - z1) % 4 === 1 ? B.sea : B.yellow);
+        if (level === 1) {
+          // gallery: doorways through the partitions keep the upper walkway continuous
+          for (const z of [z1 - 1, z2 + 1]) c.clear(galleryX, w, z, galleryX, w + 1, z);
+          for (let z = z1 - 1; z <= z2 + 1; z++) c.set(openX, w, z, z % 6 === 0 ? B.yellow : B.rail);
+        }
         furnishRoom(c, {
           x1: xa, z1, x2: xb, z2, walk: w, h: 5,
           type: bayTypes[(i + level * 4) % bayTypes.length],
@@ -116,33 +125,25 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
         });
       }
     }
-    // stair to the mezzanine at the front of each bay row
-    const sx = side === "west" ? 12 : 68;
+    // stair up to the gallery at the rear of each bay row (behind the aircraft parking box)
+    const sx = side === "west" ? 10 : 70;
     for (let k = 0; k < 6; k++) {
-      c.set(sx, WALK + k, 13 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
-      c.fill(sx, WALK - 1, 13 - k, sx, WALK + k - 1, 13 - k, B.concrete);
+      c.set(sx, WALK + k, 18 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
+      c.fill(sx, WALK - 1, 18 - k, sx, WALK + k - 1, 18 - k, B.concrete);
     }
-    // continuous mezzanine walkway linking the stair to every upper bay
-    const deckIn = side === "west" ? 12 : 68; // beside the bay fronts
-    const deckOut = side === "west" ? 13 : 67; // hangar side
-    const railX = side === "west" ? 14 : 66;
-    const deckEnd = 14 + 9 * 9 - 2;
-    for (let z = 6; z <= deckEnd; z++) {
-      c.set(deckOut, WALK + 5, z, z % 4 === 0 ? B.sea : B.andesite);
-      if (z >= 14) c.set(deckIn, WALK + 5, z, B.andesite);
-      c.set(railX, WALK + 6, z, z % 6 === 0 ? B.yellow : B.rail);
-      // support posts down to the floor
-      if (z % 9 === 4) c.fill(deckOut, WALK, z, deckOut, WALK + 4, z, B.tile);
-    }
-    c.fill(deckIn, WALK + 5, 6, deckOut, WALK + 5, 7, B.andesite);
-    c.set(railX, WALK + 6, 6, B.rail);
-    // personnel door in the side wall near the rear corner
+    // landing that joins the stair to the first upper bay's gallery
+    c.fill(Math.min(sx, galleryX), WALK + 5, 11, Math.max(sx, galleryX), WALK + 5, 12, B.andesite);
+    c.fill(sx, WALK + 5, 11, sx, WALK + 5, 13, B.andesite);
+    c.clear(galleryX, WALK + 6, 12, galleryX, WALK + 7, 13);
+    c.set(side === "west" ? 11 : 69, WALK + 6, 11, B.rail);
+    c.set(side === "west" ? 11 : 69, WALK + 6, 12, B.rail);
+    // personnel door in the side wall near the rear corner, with lights set into the wall
     const wallX = side === "west" ? 0 : 80;
     c.clear(wallX, WALK, 3, wallX, WALK + 2, 4);
-    c.set(wallX, WALK + 3, 2, B.sea);
-    c.set(wallX, WALK + 3, 5, B.sea);
-    // light band above the bays
-    for (let z = 10; z < frontZ - 4; z += 4) c.set(side === "west" ? 10 : 70, WALK + 12, z, B.sea);
+    c.set(wallX, WALK + 3, 3, B.sea);
+    c.set(wallX, WALK + 3, 4, B.sea);
+    // continuous light band built into the side wall above the bays
+    for (let z = 2; z < frontZ - 2; z++) if (z % 8 !== 0) c.set(wallX, WALK + 12, z, z % 4 === 2 ? B.sea : B.tile);
   }
 
   // --- rear block: workshop / control / storage ------------------------
@@ -182,48 +183,28 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
 
   // --- floor markings ---------------------------------------------------------
   for (let z = 14; z <= frontZ; z++) if (z % 4 !== 3) c.set(CX, WALK - 1, z, B.yellow);
-  // aircraft clearance box (light blue outline) sized for a 56-span bomber
-  for (let x = 11; x <= 69; x++) { c.set(x, WALK - 1, 22, B.lightBlue); c.set(x, WALK - 1, 92, B.lightBlue); }
-  for (let z = 22; z <= 92; z++) { c.set(11, WALK - 1, z, B.lightBlue); c.set(69, WALK - 1, z, B.lightBlue); }
+  // aircraft envelope outline (light blue): 61 wide between the bay fronts
+  const E = SUPER_HANGAR_ENVELOPE;
+  for (let x = E.x1; x <= E.x2; x++) { c.set(x, WALK - 1, E.z1, B.lightBlue); }
+  for (let z = E.z1; z <= frontZ - 1; z++) { c.set(E.x1, WALK - 1, z, B.lightBlue); c.set(E.x2, WALK - 1, z, B.lightBlue); }
   // nose-wheel stop bar and parking chevrons
   for (let x = CX - 3; x <= CX + 3; x++) c.set(x, WALK - 1, 30, B.white);
   for (let k = 0; k < 6; k++) for (const s of [-1, 1]) for (let i = 0; i < 4; i++) c.set(CX + s * (4 + i), WALK - 1, 40 + k * 8 + i, B.white);
-  // flush floor lights along the clearance box
-  for (let z = 26; z <= 90; z += 8) { c.set(13, WALK - 1, z, B.sea); c.set(67, WALK - 1, z, B.sea); }
-  // hanging lights from every second truss
-  for (let z = 8; z < frontZ; z += 16) for (const x of [20, 30, 40, 50, 60]) {
-    const y = roofY(x) - 2;
-    c.set(x, y, z, B.sea);
-  }
+  // lighting is built into the floor: a flush grid of lights across the whole bay
+  for (let z = 20; z <= 96; z += 6) for (const x of [12, 17, 23, 29, 35, 45, 51, 57, 63, 68]) c.set(x, WALK - 1, z, B.sea);
 
-  // --- lighting: high-bay pendants hung on rods from the trusses, and a flush floor grid ---
-  for (let z = 16; z < frontZ - 4; z += 8) {
-    for (const x of [18, 26, 34, 46, 54, 62]) {
-      const top = roofY(x) - 2;
-      const lampY = WALK + 15; // above a B-52 fin (12.4 m) with clearance
-      for (let y = lampY + 1; y <= top; y++) c.set(x, y, z, B.bars);
-      c.set(x, lampY, z, B.sea);
-      c.set(x, lampY + 1, z, B.tile);
-    }
-  }
-  for (let z = 20; z <= 92; z += 6) for (const x of [17, 23, 29, 35, 45, 51, 57, 63]) c.set(x, WALK - 1, z, B.sea);
-  // under-deck and bay-front lighting at ground level
-  for (let z = 14; z < frontZ - 8; z += 5) { c.set(11, WALK + 4, z, B.sea); c.set(69, WALK + 4, z, B.sea); }
-  // door-header floodlights inside the opening
-  for (let x = DOOR_X1 + 2; x <= DOOR_X2 - 2; x += 6) c.set(x, DOOR_TOP - 1, frontZ - 1, B.sea);
-
-  // --- ground equipment ----------------------------------------------------
+  // --- ground equipment, parked in the marked zone behind the aircraft ------
+  hazardBorder(c, 11, WALK - 1, 14, 69, 20);
   // tow tractor
-  c.fill(18, WALK, 70, 21, WALK, 72, B.yellow);
-  c.fill(19, WALK + 1, 70, 20, WALK + 1, 71, B.black);
-  c.set(21, WALK + 1, 72, B.sea);
-  // fuel bowser
-  c.fill(58, WALK, 66, 60, WALK + 2, 72, B.white);
-  c.fill(58, WALK, 73, 60, WALK + 1, 74, B.red);
-  c.fill(59, WALK + 3, 67, 59, WALK + 3, 71, B.lightGrey);
-  // weapons loader trolleys and crates along the bays
-  for (const [x, z] of [[15, 34], [15, 52], [65, 40], [65, 58]]) { c.fill(x, WALK, z, x + 1, WALK, z + 2, B.yellow); c.set(x, WALK + 1, z + 1, B.greenTerracotta); }
-  hazardBorder(c, 13, WALK - 1, 16, 67, 20);
+  c.fill(16, WALK, 16, 19, WALK, 18, B.yellow);
+  c.fill(17, WALK + 1, 16, 18, WALK + 1, 17, B.black);
+  c.set(19, WALK + 1, 18, B.sea);
+  // fuel bowser (parked across the zone)
+  c.fill(54, WALK, 16, 62, WALK + 2, 18, B.white);
+  c.fill(63, WALK, 16, 64, WALK + 1, 18, B.red);
+  c.fill(55, WALK + 3, 17, 61, WALK + 3, 17, B.lightGrey);
+  // weapons loader trolleys
+  for (const x of [24, 28, 50]) { c.fill(x, WALK, 16, x + 1, WALK, 18, B.yellow); c.set(x, WALK + 1, 17, B.greenTerracotta); }
 
   // --- apron --------------------------------------------------------------
   c.fill(0, WALK - 1, LEN, 80, WALK - 1, size.z - 1, B.black);

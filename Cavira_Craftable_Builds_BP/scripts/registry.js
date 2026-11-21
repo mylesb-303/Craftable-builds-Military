@@ -1,7 +1,11 @@
 import { FACILITY_SIZES } from "./structures/facilities.js";
 import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { FULL_RUNWAY_SIZES, FULL_RUNWAY_SNAP } from "./structures/full_runways.js";
-import { SUPER_HANGAR_SIZE } from "./structures/super_hangar.js";
+import { CORE_SIZES } from "./structures/core_v2.js";
+import { ARMY_SIZES, HEAVY_HANGAR_ENVELOPE } from "./structures/army_v2.js";
+import { AIR_SIZES, AIR_ENVELOPES } from "./structures/air_v2.js";
+import { NAVY_SIZES } from "./structures/navy_v2.js";
+import { SUPER_HANGAR_SIZE, SUPER_HANGAR_ENVELOPE } from "./structures/super_hangar.js";
 import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
 import { BUNKER_SPECS, bunkerSize } from "./structures/bunkers.js";
 
@@ -75,26 +79,26 @@ export const STRUCTURES = {
       size: AIRFIELD_SIZES.aircraft_apron, foundationDepth: 2, snap: AIRFIELD_SNAP.aircraft_apron
     },
     {
-      id: "helicopter_apron", name: "Four-Pad Helicopter Apron",
-      description: "Large flight-line apron with four illuminated helicopter landing and parking positions.",
-      size: { x: 41, y: 3, z: 41 }, foundationDepth: 1
+      id: "helicopter_apron", name: "Helicopter Apron (Heliport)",
+      description: "Heliport with a 23 x 23 touchdown pad and H, FATO markings, aiming circle, green perimeter lights, windsock and refuelling point.",
+      size: AIR_SIZES.helicopter_apron, foundationDepth: 2
     }
   ],
   core: [
     {
       id: "guard_post", name: "Guard Post",
-      description: "Compact furnished security post with lighting and integrated foundation.",
-      size: { x: 8, y: 9, z: 8 }, foundationDepth: 2
+      description: "Hardened sentry booth: all-round ballistic glazing, transaction window, console desk, roof canopy with lights set into the soffit and CCTV.",
+      size: CORE_SIZES.guard_post, foundationDepth: 2
     },
     {
       id: "main_security_gate", name: "Main Security Gate",
-      description: "Twin-booth vehicle checkpoint with a wide driving corridor, pedestrian access and overhead gantry.",
-      size: { x: 25, y: 10, z: 9 }, foundationDepth: 2
+      description: "Two-lane entry control point: gatehouse island with ID windows on both lanes, lit canopy, wedge barriers, speed tables, rooftop overwatch and pedestrian turnstile.",
+      size: CORE_SIZES.main_security_gate, foundationDepth: 2
     },
     {
       id: "base_headquarters", name: "Base Headquarters",
-      description: "Furnished two-storey standalone command headquarters with reception, briefing and operations rooms.",
-      size: { x: 21, y: 11, z: 17 }, foundationDepth: 2
+      description: "Two-storey headquarters with a columned portico, lobby, offices, conference room and command suite, internal stairs and three flagpoles.",
+      size: CORE_SIZES.base_headquarters, foundationDepth: 2
     },
     {
       id: "hq_administration_wing", name: "HQ Administration Wing",
@@ -103,13 +107,13 @@ export const STRUCTURES = {
     },
     {
       id: "hq_command_rotunda", name: "HQ Command Rotunda",
-      description: "Circular command centre inspired by the reference headquarters campus, with a full operations floor.",
-      size: { x: 25, y: 14, z: 25 }, foundationDepth: 2
+      description: "Domed circular command centre: situation room with a lit plot table and ring of consoles, screen wall, and ring offices behind tall windows.",
+      size: CORE_SIZES.hq_command_rotunda, foundationDepth: 2
     },
     {
       id: "ceremonial_fountain_plaza", name: "Ceremonial Fountain Plaza",
-      description: "Formal headquarters approach plaza with circular illuminated fountain and perimeter lighting.",
-      size: { x: 31, y: 6, z: 31 }, foundationDepth: 2
+      description: "Parade plaza with a tiered working fountain, flag circle, benches, lit bollards, hedged gardens and a memorial plinth.",
+      size: CORE_SIZES.ceremonial_fountain_plaza, foundationDepth: 2
     }
   ],
   army: [
@@ -135,8 +139,8 @@ export const STRUCTURES = {
     },
     {
       id: "heavy_vehicle_maintenance_hangar", name: "Heavy Vehicle Maintenance Hangar",
-      description: "Tall three-portal maintenance hall with inspection pits, red columns and a full-width overhead crane.",
-      size: { x: 35, y: 15, z: 27 }, foundationDepth: 2
+      description: "Three drive-through bays (clear 7 x 7 lanes) with two inspection pits, a wash bay, overhead gantry crane, tool benches and parts racks.",
+      size: ARMY_SIZES.heavy_vehicle_maintenance_hangar, foundationDepth: 2, envelope: HEAVY_HANGAR_ENVELOPE
     },
     {
       id: "army_medical_facility", name: "Army Medical Facility",
@@ -150,40 +154,40 @@ export const STRUCTURES = {
     },
     {
       id: "army_defensive_checkpoint", name: "Defensive Checkpoint",
-      description: "Compact hardened checkpoint with vehicle lane, inspection booths, barrier and defensive positions.",
-      size: { x: 19, y: 9, z: 13 }, foundationDepth: 2
+      description: "Road checkpoint with a serpentine chicane, covered search bay, boom barrier, two sandbag sangars with bunks and radios, and wire obstacles.",
+      size: ARMY_SIZES.army_defensive_checkpoint, foundationDepth: 2
     },
     {
       id: "army_perimeter_wall", name: "Perimeter Wall Module",
-      description: "Repeatable reinforced perimeter section with patrol ledge, lighting and protected firing positions.",
-      size: { x: 21, y: 8, z: 5 }, foundationDepth: 2
+      description: "Modular precast T-wall section with a patrol step, buttress fins, razor wire, floodlights built into the coping and CCTV.",
+      size: ARMY_SIZES.army_perimeter_wall, foundationDepth: 2
     }
   ],
   air_force: [
     {
       id: "super_heavy_aircraft_hangar", name: "Super-Heavy Aircraft Hangar",
       description: "81 × 101 × 37 strategic bomber hangar with arched roof, 65-wide door, two-storey maintenance bays, raised control room and apron. Fits a B-52 or B-2.",
-      size: SUPER_HANGAR_SIZE, foundationDepth: 2
+      size: SUPER_HANGAR_SIZE, foundationDepth: 2, envelope: SUPER_HANGAR_ENVELOPE
     },
     {
       id: "large_aircraft_hangar", name: "Heavy Aircraft Hangar",
-      description: "Large curved-roof hangar with a 29-block clear entrance, workshops and parking clearance for Airforce aircraft.",
-      size: { x: 31, y: 18, z: 25 }, foundationDepth: 2
+      description: "Clear-span transport hangar: 45-wide x 16-tall door for C-130J, KC-135 and A400M, rear workshops and a glazed mezzanine. Nothing stands in the aircraft area.",
+      size: AIR_SIZES.large_aircraft_hangar, foundationDepth: 2, envelope: AIR_ENVELOPES.large_aircraft_hangar
     },
     {
       id: "hardened_fighter_shelter", name: "Hardened Fighter Shelter",
-      description: "Single arched aircraft shelter with protected walls, maintenance points and illuminated guide line.",
-      size: { x: 21, y: 12, z: 25 }, foundationDepth: 2
+      description: "TAB-VEE style hardened shelter: steel-lined concrete arch for one fighter (up to A-10 span), lights built into the liner, rear exhaust port.",
+      size: AIR_SIZES.hardened_fighter_shelter, foundationDepth: 2, envelope: AIR_ENVELOPES.hardened_fighter_shelter
     },
     {
       id: "fighter_shelter_row", name: "Three-Shelter Fighter Row",
-      description: "Connected row of three hardened fighter shelters sized for current and future aircraft entities.",
-      size: { x: 49, y: 12, z: 25 }, foundationDepth: 2
+      description: "Two hardened fighter shelters with an earth-covered ready room (briefing room and bunks) between them.",
+      size: AIR_SIZES.fighter_shelter_row, foundationDepth: 2, envelope: AIR_ENVELOPES.fighter_shelter_row
     },
     {
       id: "helicopter_hangar", name: "Helicopter Hangar",
-      description: "Long glass-fronted three-bay hangar with generous rotor clearance, guide lines and service stores.",
-      size: { x: 41, y: 14, z: 27 }, foundationDepth: 2
+      description: "Two-helicopter hangar with a 37-wide clear door (Chinook, Apache, Osprey), rear workshop/avionics/crew rooms and a mezzanine store.",
+      size: AIR_SIZES.helicopter_hangar, foundationDepth: 2, envelope: AIR_ENVELOPES.helicopter_hangar
     },
     {
       id: "airfield_operations_building", name: "Airfield Operations Building",
@@ -197,8 +201,8 @@ export const STRUCTURES = {
     },
     {
       id: "watch_tower", name: "Airbase Watch Tower",
-      description: "Tall layered reference watchtower with ladder shaft, observation cab, stepped roof and beacon.",
-      size: { x: 23, y: 64, z: 23 }, foundationDepth: 2
+      description: "Airfield observation tower: spiral stair inside a concrete shaft to a glazed 360-degree cab with consoles, balcony, beacon and a guard-room base.",
+      size: AIR_SIZES.watch_tower, foundationDepth: 2
     }
   ],
   navy: [
@@ -234,53 +238,53 @@ export const STRUCTURES = {
     },
     {
       id: "pier_straight", name: "Pier Straight",
-      description: "Water-preserving straight pier with deep supports, navigation lighting and mooring points.",
-      size: { x: 15, y: 7, z: 31 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Pile-supported pier with timber fender piles and rubber fenders, bollards and bitts, flush utility trench, shore-power pedestals, crane rails and deck lights.",
+      size: NAVY_SIZES.pier_straight, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "pier_corner", name: "Pier Corner",
-      description: "Water-preserving ninety-degree pier corner for modular harbour routing.",
-      size: { x: 21, y: 7, z: 21 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Pier corner with fendered faces, bollards, utility trenches and flush deck lights.",
+      size: NAVY_SIZES.pier_corner, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "pier_t_junction", name: "Pier T-Junction",
-      description: "Water-preserving T-shaped pier junction joining three modular dock directions.",
-      size: { x: 31, y: 7, z: 21 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Pier T-junction with fendered faces, bollards, cross utility trench and flush deck lights.",
+      size: NAVY_SIZES.pier_t_junction, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "heavy_ship_berth", name: "Heavy Ship Berth",
-      description: "Wide protected berth for large naval vessels with twin service walks and heavy fenders.",
-      size: { x: 21, y: 8, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Twin-wharf berth with fender piles, log camels, double bitts, utility trenches, a brow tower with gangway and head-pier crane rail.",
+      size: NAVY_SIZES.heavy_ship_berth, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "submarine_service_berth", name: "Submarine Service Berth",
-      description: "Extra-wide submarine water-channel berth with twin service walks and engineering stations.",
-      size: { x: 31, y: 8, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "19-wide submarine berth with low camels, shore-power trays, security boom with buoy lights and a glazed guard booth.",
+      size: NAVY_SIZES.submarine_service_berth, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "naval_fueling_pier", name: "Naval Fueling Pier",
-      description: "Reinforced fueling pier with protected pumping stations and marked service trunk.",
-      size: { x: 17, y: 9, z: 31 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Fuelling pier with a central pipe rack, two manifold platforms per side with loading arms and hose reels, fire monitors and spill kit.",
+      size: NAVY_SIZES.naval_fueling_pier, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dry_dock_side", name: "Dry-Dock Side Module",
-      description: "Repeatable hardened dry-dock wall and illuminated upper service deck.",
-      size: { x: 11, y: 12, z: 41 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Graving-dock wall with stepped altars, keel blocks, crane rail, bollards, safety rail, ladders through the altars and lights in each riser.",
+      size: NAVY_SIZES.dry_dock_side, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dry_dock_gate_end", name: "Dry-Dock Gate & End",
-      description: "Heavy modular dry-dock closure with side piers, gate structure and service gantry.",
-      size: { x: 31, y: 12, z: 13 }, foundationDepth: 3, previewFloorY: 8, placementMode: "overlay"
+      description: "Caisson gate across the dock entrance with a railed walkway, abutments, bollards and a pump house.",
+      size: NAVY_SIZES.dry_dock_gate_end, foundationDepth: 3, previewFloorY: 8, placementMode: "overlay"
     },
     {
       id: "nuclear_submarine_pen", name: "Nuclear Submarine Pen",
-      description: "Extra-wide covered submarine water channel with a high hardened arch and protected engineering walks.",
-      size: { x: 39, y: 24, z: 45 }, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
+      description: "Reinforced pen over a 23-wide channel: thick walls, burster-slab roof with built-in lights, fendered galleries, travelling crane, workshops and blast-door pockets.",
+      size: NAVY_SIZES.nuclear_submarine_pen, foundationDepth: 3, previewFloorY: 4, placementMode: "overlay"
     },
     {
       id: "dockside_loading_crane", name: "Dockside Loading Crane",
-      description: "Tall portal crane with working deck, trolley beam, suspended hook and warning lighting.",
-      size: { x: 15, y: 26, z: 17 }, foundationDepth: 2
+      description: "Rail-mounted portal crane: braced legs on bogies, slewing platform, glazed cab, machinery house, jib with hoist and hook, counterweight and ladder.",
+      size: NAVY_SIZES.dockside_loading_crane, foundationDepth: 2
     },
     {
       id: "naval_ammunition_bunker", name: "Naval Ammunition Bunker",
@@ -289,13 +293,13 @@ export const STRUCTURES = {
     },
     {
       id: "coastal_defence_bunker", name: "Coastal Defence Bunker",
-      description: "Hardened coastal observation and defence post with protected stations and command room.",
-      size: { x: 25, y: 10, z: 19 }, foundationDepth: 2
+      description: "Earth-covered casemate with two gun embrasures, observation slit, magazine, crew room and a baffled rear entrance.",
+      size: NAVY_SIZES.coastal_defence_bunker, foundationDepth: 2
     },
     {
       id: "seawall_module", name: "Seawall Module",
-      description: "Repeatable deep-founded harbour wall with service walk and navigation lights.",
-      size: { x: 21, y: 9, z: 7 }, foundationDepth: 3, previewFloorY: 5, placementMode: "overlay"
+      description: "Stepped seawall with a wave-return lip, promenade, railings, lights built into the wall, benches and a ladder to the water (modular).",
+      size: NAVY_SIZES.seawall_module, foundationDepth: 3, previewFloorY: 5, placementMode: "overlay"
     }
   ],
   bunkers: [
@@ -338,8 +342,8 @@ export const STRUCTURES = {
     },
     {
       id: "radar_radome_facility", name: "Radar & Radome Facility",
-      description: "Large stepped operations base with elevated white radome and four strategic-service cylinders.",
-      size: { x: 33, y: 22, z: 33 }, foundationDepth: 2
+      description: "Geodesic radome on a two-storey equipment building: generators, comms, radar processing and operations rooms, roof deck, fence.",
+      size: AIR_SIZES.radar_radome_facility, foundationDepth: 2
     },
     {
       id: "small_communications_dish_station", name: "Small Communications Dish Station",
@@ -380,8 +384,8 @@ export const STRUCTURES = {
     },
     {
       id: "fuel_tank_farm", name: "Airbase Fuel Tank Farm",
-      description: "Contained four-tank fuel installation with service gate, warning markers and perimeter lighting.",
-      size: { x: 29, y: 14, z: 23 }, foundationDepth: 2
+      description: "Two aboveground fuel tanks inside a containment bund, pipe rack, pump house, covered truck fill stand with loading arm and fire monitor.",
+      size: AIR_SIZES.fuel_tank_farm, foundationDepth: 2
     }
   ],
   modular: [

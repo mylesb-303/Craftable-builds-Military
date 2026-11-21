@@ -73,12 +73,22 @@ export function furnishRoom(c, room) {
       c.chair(x, y0, z, F.back);
     }
   };
+  /** local direction for a room-frame direction: "back" (v-), "door" (v+), "u+" or "u-" */
+  const dirOf = (d) => ({ back: F.back, door: F.toDoor, "u+": F.uDir, "u-": F.uNeg })[d];
+  /** real bed with its foot at (u, v) and pillow pointing toward `d` (room-frame direction) */
+  const bed = (u, dy, v, d) => {
+    if (u < 0 || v < 0 || u >= F.W || v >= F.L) return;
+    const [x, z] = F.map(u, v);
+    c.bed(x, y0 + dy, z, dirOf(d));
+  };
+  const table = (u, v, id = "minecraft:spruce_slab") => set(u, 0, v, c.slabTop(id));
   const crate = (u, v, i) => set(u, 0, v, [B.greenTerracotta, B.orangeTerracotta, B.barrel, B.greenTerracotta][i % 4]);
-  const bunk = (u, v, along) => {
-    // along: number of v cells (2)
-    set(u, 0, v, B.whiteWool); set(u, 0, v + 1, B.greenWool);
-    set(u, 1, v, B.bars); set(u, 1, v + 1, B.bars);
-    set(u, 2, v, B.whiteWool); set(u, 2, v + 1, B.greenWool);
+  /** real bunk bed: two beds stacked on a spruce slab frame; pillows toward the back wall */
+  const bunk = (u, v) => {
+    bed(u, 0, v + 1, "back");
+    const frameSlab = c.slabTop("minecraft:spruce_slab");
+    set(u, 1, v, frameSlab); set(u, 1, v + 1, frameSlab);
+    if (H >= 4) bed(u, 2, v + 1, "back");
   };
 
   switch (room.type) {
@@ -100,7 +110,7 @@ export function furnishRoom(c, room) {
       screenWall(Math.max(1, Math.floor(F.W / 2) - 3), Math.min(F.W - 2, Math.floor(F.W / 2) + 3), 1, Math.min(4, H - 1));
       const u1 = 2, u2 = F.W - 3, vMid = Math.floor(F.L / 2);
       for (let u = u1; u <= u2; u++) {
-        set(u, 0, vMid, B.darkOak); set(u, 0, vMid + 1, u % 2 ? B.darkOak : B.sea);
+        table(u, vMid, "minecraft:dark_oak_slab"); table(u, vMid + 1, "minecraft:dark_oak_slab");
         const [xa, za] = F.map(u, vMid - 1); c.chair(xa, y0, za, F.toDoor);
         const [xb, zb] = F.map(u, vMid + 2); c.chair(xb, y0, zb, F.back);
       }
@@ -108,14 +118,31 @@ export function furnishRoom(c, room) {
     }
     case "bunks":
     case "barracks": {
-      for (let u = 0; u < F.W; u++) if (!aisle(u)) { set(u, 0, 0, B.iron); set(u, 1, 0, B.iron); }
-      for (let v = 2; v + 1 < F.L - 1; v += 3) { bunk(0, v); bunk(F.W - 1, v); if (F.W >= 9) { bunk(2, v); bunk(F.W - 3, v); } }
-      for (let v = 2; v < F.L - 1; v += 3) { set(1, 0, v + 2, B.greenTerracotta); set(F.W - 2, 0, v + 2, B.greenTerracotta); }
+      // locker wall: barrels with their doors facing into the room
+      for (let u = 0; u < F.W; u++) if (!aisle(u)) { set(u, 0, 0, c.barrel(F.toDoor)); set(u, 1, 0, c.barrel(F.toDoor)); }
+      for (let v = 2; v + 1 < F.L - 1; v += 3) {
+        bunk(0, v); bunk(F.W - 1, v);
+        if (F.W >= 9) { bunk(2, v); bunk(F.W - 3, v); }
+        // footlocker chests at the foot end of each bunk
+        set(0, 0, v + 2, c.facing("minecraft:chest", F.uDir)); set(F.W - 1, 0, v + 2, c.facing("minecraft:chest", F.uNeg));
+      }
       break;
     }
     case "officers": {
-      for (let u = 1; u < F.W - 1; u += 4) { set(u, 0, 0, B.whiteWool); set(u, 0, 1, B.blue); set(u + 1, 0, 0, B.spruce); set(u + 1, 1, 0, B.lantern); }
-      for (let u = 1; u < F.W - 1; u += 4) { set(u, 0, F.L - 2, B.spruce); const [x, z] = F.map(u, F.L - 3); c.chair(x, y0, z, F.toDoor); set(u + 1, 0, F.L - 2, B.bookshelf); }
+      for (let u = 1; u < F.W - 1; u += 4) {
+        if (aisle(u)) continue;
+        bed(u, 0, 1, "back");
+        set(u, 0, 2, c.P("minecraft:blue_carpet")); set(u + 1, 0, 2, c.P("minecraft:blue_carpet"));
+        set(u + 1, 0, 0, c.barrel(F.toDoor)); set(u + 1, 1, 0, B.lantern); // bedside cabinet + lamp
+        if (u + 2 < F.W - 1) set(u + 2, 0, 0, c.facing("minecraft:chest", F.toDoor));
+      }
+      for (let u = 1; u < F.W - 1; u += 4) {
+        if (aisle(u)) continue;
+        table(u, F.L - 2, "minecraft:dark_oak_slab");
+        const [x, z] = F.map(u, F.L - 3); c.chair(x, y0, z, F.toDoor);
+        set(u + 1, 0, F.L - 2, B.bookshelf);
+        set(u, 1, F.L - 2, c.P("minecraft:flower_pot"));
+      }
       break;
     }
     case "mess": {
@@ -123,7 +150,7 @@ export function furnishRoom(c, room) {
       for (let v = 2; v + 2 < F.L; v += 3) {
         for (let u = 1; u < F.W - 1; u++) {
           if (aisle(u)) continue;
-          set(u, 0, v + 1, B.spruce);
+          table(u, v + 1);
           const [xa, za] = F.map(u, v); c.bench(xa, y0, za, F.toDoor);
           const [xb, zb] = F.map(u, v + 2); if (v + 2 < F.L - 1) c.bench(xb, y0, zb, F.back);
         }
@@ -131,10 +158,11 @@ export function furnishRoom(c, room) {
       break;
     }
     case "kitchen": {
-      const items = [B.smoker, B.furnace, B.smooth, B.cauldron, B.smooth, B.crafting, B.barrel, B.smooth];
+      const worktop = c.slabTop("minecraft:smooth_stone_slab");
+      const items = [c.facing("minecraft:smoker", F.toDoor), c.facing("minecraft:furnace", F.toDoor), worktop, B.cauldron, worktop, B.crafting, c.barrel(F.toDoor), worktop];
       for (let u = 0; u < F.W; u++) set(u, 0, 0, items[u % items.length]);
-      for (let v = 1; v < F.L - 1; v++) { set(0, 0, v, v % 2 ? B.barrel : B.smooth); set(F.W - 1, 0, v, v % 2 ? B.smooth : B.iron); }
-      if (F.W >= 7) for (let u = 2; u < F.W - 2; u++) if (!aisle(u)) set(u, 0, Math.floor(F.L / 2), B.smooth);
+      for (let v = 1; v < F.L - 1; v++) { set(0, 0, v, v % 2 ? c.barrel(F.uDir) : worktop); set(F.W - 1, 0, v, v % 2 ? worktop : c.facing("minecraft:blast_furnace", F.uNeg)); }
+      if (F.W >= 7) for (let u = 2; u < F.W - 2; u++) if (!aisle(u)) set(u, 0, Math.floor(F.L / 2), worktop);
       break;
     }
     case "medical": {
@@ -143,10 +171,14 @@ export function furnishRoom(c, room) {
       wall(mid, 1, B.red); wall(mid, 3, B.red);
       for (const [du, dy] of [[-1, 1], [1, 1], [-1, 3], [1, 3]]) wall(mid + du, dy, B.white);
       for (let v = 1; v + 1 < F.L - 1; v += 3) {
-        for (const u of [0, F.W - 1]) { set(u, 0, v, B.quartz); set(u, 0, v + 1, B.whiteWool); set(u, 1, v, B.sea); }
-        if (F.W >= 7) { set(1, 0, v + 2, B.brewing); set(F.W - 2, 0, v + 2, B.white); }
+        for (const u of [0, F.W - 1]) {
+          bed(u, 0, v + 1, "back");
+          set(u, 0, v + 2, c.P("minecraft:white_stained_glass_pane")); // privacy screen
+          set(u, 1, v + 2, c.P("minecraft:white_stained_glass_pane"));
+        }
+        if (F.W >= 7) { set(1, 0, v + 2, B.brewing); set(F.W - 2, 0, v + 2, B.cauldron); }
       }
-      for (let u = 1; u < F.W - 1; u++) if (!aisle(u)) set(u, 0, 0, u % 2 ? B.white : B.brewing);
+      for (let u = 1; u < F.W - 1; u++) if (!aisle(u)) set(u, 0, 0, u % 3 === 0 ? B.cauldron : u % 3 === 1 ? c.slabTop("minecraft:quartz_slab") : B.brewing);
       break;
     }
     case "decon": {
@@ -214,7 +246,7 @@ export function furnishRoom(c, room) {
     }
     case "office": {
       for (let u = 0; u < F.W; u++) if (!aisle(u)) set(u, 0, 0, u % 2 ? B.bookshelf : B.chiseledBookshelf);
-      for (let u = 1; u < F.W - 1; u += 3) if (!aisle(u)) { set(u, 0, 2, B.spruce); set(u, 1, 2, B.daylight); const [x, z] = F.map(u, 3); c.chair(x, y0, z, F.back); }
+      for (let u = 1; u < F.W - 1; u += 3) if (!aisle(u)) { table(u, 2, "minecraft:dark_oak_slab"); set(u, 1, 2, c.P("minecraft:flower_pot")); const [x, z] = F.map(u, 3); c.chair(x, y0, z, F.back); }
       break;
     }
     case "briefing": {
@@ -224,12 +256,12 @@ export function furnishRoom(c, room) {
       break;
     }
     case "lab": {
-      for (let u = 0; u < F.W; u++) { set(u, 0, 0, B.white); set(u, 1, 0, u % 3 === 0 ? B.brewing : u % 3 === 1 ? B.glass : B.cauldron); }
-      for (let u = 2; u < F.W - 2; u++) if (!aisle(u)) set(u, 0, Math.floor(F.L / 2), B.quartz);
+      for (let u = 0; u < F.W; u++) { set(u, 0, 0, u % 3 === 2 ? B.cauldron : c.slabTop("minecraft:quartz_slab")); if (u % 3 === 0) set(u, 1, 0, B.brewing); }
+      for (let u = 2; u < F.W - 2; u++) if (!aisle(u)) set(u, 0, Math.floor(F.L / 2), c.slabTop("minecraft:quartz_slab"));
       break;
     }
     case "workshop": {
-      const items = [B.crafting, B.anvil, B.smithing, B.grindstone, B.blackstone, B.loom];
+      const items = [B.crafting, B.anvil, B.smithing, B.grindstone, c.slabTop("minecraft:polished_blackstone_slab"), c.facing("minecraft:loom", F.toDoor)];
       for (let u = 0; u < F.W; u++) if (!aisle(u)) set(u, 0, 0, items[u % items.length]);
       for (let v = 1; v < F.L - 1; v++) { crate(0, 0, v, v); crate(F.W - 1, 0, v, v + 1); }
       break;

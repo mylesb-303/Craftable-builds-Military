@@ -17,109 +17,29 @@ import {
 } from "./placement.js";
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
 import { sectionPlan, sectionBounds } from "./sections.js";
-import { accessPass, lightPass } from "./postprocess.js";
+import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, lastLoadError, release, cleanupLeftovers } from "./chunk_loader.js";
 import { VARIANTS, getVariant } from "./variants.js";
 import { worldDir } from "./kit.js";
 import { rotateXZ, toWorldLocation } from "./placement.js";
-import { buildGuardPost } from "./structures/guard_post.js";
-import { buildMainSecurityGate } from "./structures/main_security_gate.js";
-import { buildBaseHeadquarters } from "./structures/base_headquarters.js";
-import { buildLargeAircraftHangar } from "./structures/large_aircraft_hangar.js";
 import { buildArmyBarracks } from "./structures/army_barracks.js";
 import { buildArmyArmoury } from "./structures/army_armoury.js";
-import {
-  buildArmyVehicleDepot,
-  buildArmyMedicalFacility,
-  buildArmyCommandBunker,
-  buildArmyDefensiveCheckpoint,
-  buildArmyPerimeterWall
-} from "./structures/army_expansion.js";
-import { buildWatchTower } from "./structures/watch_tower.js";
+import { buildArmyVehicleDepot, buildArmyMedicalFacility, buildArmyCommandBunker } from "./structures/army_expansion.js";
 import { buildSuperHeavyAircraftHangar } from "./structures/super_hangar.js";
-import {
-  buildArmyBarracksV2,
-  buildOfficersQuartersV2,
-  buildArmyArmouryV2,
-  buildArmyVehicleDepotV2,
-  buildArmyMedicalFacilityV2,
-  buildArmyCommandBunkerV2,
-  buildAirfieldOperationsBuildingV2,
-  buildAirTrafficControlTowerV2,
-  buildNavalOperationsCentreV2,
-  buildSailorsBarracksV2,
-  buildDockyardLogisticsWarehouseV2,
-  buildShipMaintenanceWorkshopV2,
-  buildNavalAmmunitionBunkerV2,
-  buildHarbourControlTowerV2,
-  buildNavalHeadquartersV2,
-  buildHQAdministrationWingV2,
-  buildLogisticsHallV2
-} from "./structures/facilities.js";
+import { buildArmyBarracksV2, buildOfficersQuartersV2, buildArmyArmouryV2, buildArmyVehicleDepotV2, buildArmyMedicalFacilityV2, buildArmyCommandBunkerV2, buildAirfieldOperationsBuildingV2, buildAirTrafficControlTowerV2, buildNavalOperationsCentreV2, buildSailorsBarracksV2, buildDockyardLogisticsWarehouseV2, buildShipMaintenanceWorkshopV2, buildNavalAmmunitionBunkerV2, buildHarbourControlTowerV2, buildNavalHeadquartersV2, buildHQAdministrationWingV2, buildLogisticsHallV2 } from "./structures/facilities.js";
 import { buildAirTrafficControlTower } from "./structures/air_traffic_control_tower.js";
-import {
-  buildHQAdministrationWing,
-  buildHQCommandRotunda,
-  buildCeremonialFountainPlaza,
-  buildOfficersQuarters,
-  buildLogisticsHall,
-  buildHeavyVehicleMaintenanceHangar
-} from "./structures/base_expansion.js";
-import {
-  buildHardenedFighterShelter,
-  buildFighterShelterRow,
-  buildHelicopterHangar,
-  buildAirfieldOperationsBuilding,
-  buildFuelTankFarm,
-  buildRadarRadomeFacility
-} from "./structures/airforce_expansion.js";
-import { buildHelicopterApron } from "./structures/airforce_expansion.js";
-import {
-  buildRunwayStraightV2,
-  buildRunwayTouchdownZone,
-  buildRunwayThresholdV2,
-  buildRunwayTaxiwayJunction,
-  buildTaxiwayStraightV2,
-  buildTaxiwayHoldingPoint,
-  buildTaxiwayCornerV2,
-  buildAircraftApronV2,
-  normaliseDesignator
-} from "./structures/airfield.js";
+import { buildHQAdministrationWing, buildOfficersQuarters, buildLogisticsHall } from "./structures/base_expansion.js";
+import { buildAirfieldOperationsBuilding } from "./structures/airforce_expansion.js";
+import { buildRunwayStraightV2, buildRunwayTouchdownZone, buildRunwayThresholdV2, buildRunwayTaxiwayJunction, buildTaxiwayStraightV2, buildTaxiwayHoldingPoint, buildTaxiwayCornerV2, buildAircraftApronV2, normaliseDesignator } from "./structures/airfield.js";
+import { buildGuardPost, buildMainSecurityGate, buildBaseHeadquarters, buildHQCommandRotunda, buildCeremonialFountainPlaza } from "./structures/core_v2.js";
+import { buildArmyDefensiveCheckpoint, buildArmyPerimeterWall, buildHeavyVehicleMaintenanceHangar } from "./structures/army_v2.js";
+import { buildLargeAircraftHangar, buildWatchTower, buildHelicopterApron, buildHelicopterHangar, buildHardenedFighterShelter, buildFighterShelterRow, buildRadarRadomeFacility, buildFuelTankFarm } from "./structures/air_v2.js";
+import { buildPierStraight, buildPierCorner, buildPierTJunction, buildHeavyShipBerth, buildSubmarineServiceBerth, buildNavalFuelingPier, buildDryDockSide, buildDryDockGateEnd, buildNuclearSubmarinePen, buildDocksideLoadingCrane, buildCoastalDefenceBunker, buildSeawallModule } from "./structures/navy_v2.js";
 import { buildRunwayFullShort, buildRunwayFullMedium, buildRunwayFullLong } from "./structures/full_runways.js";
-import {
-  buildNavalHeadquarters,
-  buildHarbourControlTower,
-  buildPierStraight,
-  buildPierCorner,
-  buildPierTJunction,
-  buildHeavyShipBerth,
-  buildSubmarineServiceBerth,
-  buildNavalFuelingPier,
-  buildDryDockSide,
-  buildDryDockGateEnd,
-  buildNuclearSubmarinePen,
-  buildDocksideLoadingCrane,
-  buildCoastalDefenceBunker,
-  buildSeawallModule
-} from "./structures/navy_expansion.js";
-import {
-  buildSmallNuclearBunker,
-  buildMediumNuclearBunker,
-  buildLargeNuclearBunker,
-  buildStrategicOperationsBunker
-} from "./structures/bunkers.js";
-import {
-  buildSmallTacticalRadarPost,
-  buildMediumRadarStation,
-  buildLargeEarlyWarningRadarComplex,
-  buildSmallCommunicationsDishStation,
-  buildMediumSatelliteDishStation,
-  buildLargeStrategicSatelliteArray,
-  buildStandaloneSmallSatelliteDish,
-  buildStandaloneMediumSatelliteDish,
-  buildStandaloneLargeSatelliteDish
-} from "./structures/strategic_v2.js";
+import { buildNavalHeadquarters, buildHarbourControlTower } from "./structures/navy_expansion.js";
+import { buildSmallNuclearBunker, buildMediumNuclearBunker, buildLargeNuclearBunker, buildStrategicOperationsBunker } from "./structures/bunkers.js";
+import { buildSmallTacticalRadarPost, buildMediumRadarStation, buildLargeEarlyWarningRadarComplex, buildSmallCommunicationsDishStation, buildMediumSatelliteDishStation, buildLargeStrategicSatelliteArray, buildStandaloneSmallSatelliteDish, buildStandaloneMediumSatelliteDish, buildStandaloneLargeSatelliteDish } from "./structures/strategic_v2.js";
 
 const TABLET_ID = "cavira_builds:construction_tablet";
 const LAST_BUILDS = new Map();
@@ -623,9 +543,9 @@ async function constructPreview(player, session, trial = false) {
 
 /** Access + lighting passes for a structure (bunkers keep their verified shafts; overlays are skipped). */
 export function postPassesFor(structure) {
-  if (structure.placementMode === "overlay") return [];
-  if (structure.placementMode === "excavation") return [["light", lightPass]];
-  return [["access", accessPass], ["light", lightPass]];
+  if (structure.placementMode === "overlay") return [["fixtures", fixturePass]];
+  if (structure.placementMode === "excavation") return [["fixtures", fixturePass], ["light", lightPass]];
+  return [["access", accessPass], ["fixtures", fixturePass], ["light", lightPass]];
 }
 
 export function runBuilder(structureId, dimension, origin, rotation, variantId, options = {}) {

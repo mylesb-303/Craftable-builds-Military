@@ -220,6 +220,22 @@ export function kit(dimension, origin, rotation, size, variantId) {
     return P("minecraft:ladder", { facing_direction: values[worldDir(face, rotation)] }, "minecraft:ladder");
   };
   c.chair = (x, y, z, facing) => c.set(x, y, z, c.stairs("minecraft:polished_blackstone_stairs", OPPOSITE[facing]));
+  // --- real furniture (v1.8) -----------------------------------------------
+  /** A real two-block bed: foot at (x, z), pillow toward local direction `head`. */
+  c.bed = (x, y, z, head) => {
+    const v = DIRS[head];
+    const direction = { south: 0, west: 1, north: 2, east: 3 }[worldDir(head, rotation)];
+    c.set(x, y, z, P("minecraft:bed", { direction, head_piece_bit: false, occupied_bit: false }, "minecraft:white_wool"));
+    c.set(x + v.x, y, z + v.z, P("minecraft:bed", { direction, head_piece_bit: true, occupied_bit: false }, "minecraft:white_wool"));
+  };
+  /** Blocks with a cardinal facing (furnace, smoker, blast furnace, chest, loom, …). */
+  c.facing = (id, face) => P(id, { "minecraft:cardinal_direction": worldDir(face, rotation) }, id);
+  /** Barrel / cupboard with its lid facing `face`. */
+  c.barrel = (face) => P("minecraft:barrel", { facing_direction: { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], open_bit: false }, "minecraft:barrel");
+  /** Upper-half slab: table tops, desks, counters and shelves. */
+  c.slabTop = (id) => P(id, { "minecraft:vertical_half": "top" }, id);
+  /** Lantern hanging from the block above. */
+  c.hangingLantern = (soul = false) => P(soul ? "minecraft:soul_lantern" : "minecraft:lantern", { hanging: true }, "minecraft:lantern");
   c.bench = (x, y, z, facing) => c.set(x, y, z, c.stairs("minecraft:spruce_stairs", OPPOSITE[facing]));
 
   return c;
