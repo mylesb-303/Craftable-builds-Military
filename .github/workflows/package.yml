@@ -60,6 +60,8 @@ jobs:
           grep -q "DRAW PASS" holo.txt
           node rwlightcheck.mjs | tee rwl.txt
           grep -q "RWLIGHTS PASS" rwl.txt
+          node maproomcheck.mjs | tee maproom.txt
+          grep -q "MAPROOM PASS" maproom.txt
           node passes.mjs | tee passes.txt
           ! awk '{split($0,a,"dark -> "); split(a[2],b," "); if (b[1]!="0" && $0 !~ /overlay/) bad=1} END{exit !bad}' passes.txt
           for b in small_nuclear_bunker medium_nuclear_bunker large_nuclear_bunker strategic_operations_bunker; do
@@ -73,7 +75,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.9.1_Runway_Lights.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.10.0_Map_Room.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -87,4 +89,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Cavira-Craftable-Builds-1.7.0-Lighting-Access-Previews
-          path: dist/Cavira_Craftable_Builds_1.9.1_Runway_Lights.mcaddon
+          path: dist/Cavira_Craftable_Builds_1.10.0_Map_Room.mcaddon

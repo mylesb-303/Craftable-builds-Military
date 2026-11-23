@@ -19,6 +19,8 @@ import { constructStaged, restoreStaged, worldBounds } from "./construction_engi
 import { sectionPlan, sectionBounds } from "./sections.js";
 import { compileHologramSource, modelHologram, startHologram } from "./hologram.js";
 import { installRunwayLights, registerRunwayLights } from "./runway_lights.js";
+import { scanTerrain } from "./terrain_scan.js";
+import { buildOperationsMapRoom } from "./structures/map_room.js";
 import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, lastLoadError, release, cleanupLeftovers } from "./chunk_loader.js";
@@ -613,6 +615,11 @@ async function constructPreview(player, session, trial = false) {
     }
   };
   try {
+    if (structure.id === "operations_map_room") {
+      // scan the real land around the room for its relief map table
+      session.options = { ...(session.options ?? {}), terrain: scanTerrain(dimension, origin, rotation, structure.size, structure.foundationDepth ?? 2) };
+      if (!session.options.terrain.scanned) tell(player, "§7Not enough of the surrounding land is loaded to map it; the table shows the planning map instead.");
+    }
     const buildFn = (zRange) => (recorder) => {
       if (structure.placementMode !== "overlay" && structure.placementMode !== "excavation") {
         clearVolume(recorder, origin, structure.size, rotation, clearStartY(structure));
@@ -686,6 +693,9 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       break;
     case "hq_command_rotunda":
       buildHQCommandRotunda(dimension, origin, rotation, variantId);
+      break;
+    case "operations_map_room":
+      buildOperationsMapRoom(dimension, origin, rotation, variantId, options);
       break;
     case "ceremonial_fountain_plaza":
       buildCeremonialFountainPlaza(dimension, origin, rotation, variantId);

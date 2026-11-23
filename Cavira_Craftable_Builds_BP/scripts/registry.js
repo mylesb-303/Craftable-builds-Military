@@ -2,6 +2,7 @@ import { FACILITY_SIZES } from "./structures/facilities.js";
 import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { FULL_RUNWAY_SIZES, FULL_RUNWAY_SNAP } from "./structures/full_runways.js";
 import { CORE_SIZES } from "./structures/core_v2.js";
+import { MAP_ROOM_SIZE } from "./structures/map_room.js";
 import { ARMY_SIZES, HEAVY_HANGAR_ENVELOPE } from "./structures/army_v2.js";
 import { AIR_SIZES, AIR_ENVELOPES } from "./structures/air_v2.js";
 import { NAVY_SIZES } from "./structures/navy_v2.js";
@@ -114,6 +115,11 @@ export const STRUCTURES = {
       id: "ceremonial_fountain_plaza", name: "Ceremonial Fountain Plaza",
       description: "Parade plaza with a tiered working fountain, flag circle, benches, lit bollards, hedged gardens and a memorial plinth.",
       size: CORE_SIZES.ceremonial_fountain_plaza, foundationDepth: 2
+    },
+    {
+      id: "operations_map_room", name: "Operations Map Room",
+      description: "Briefing and planning room around a large relief map table that shows a raised miniature of the real land around it (1 cell = 6 blocks), plus a wall chart, plotting boards, briefing lectern, radio room and map archive.",
+      size: MAP_ROOM_SIZE, foundationDepth: 2
     }
   ],
   army: [
@@ -180,7 +186,7 @@ export const STRUCTURES = {
       size: AIR_SIZES.hardened_fighter_shelter, foundationDepth: 2, envelope: AIR_ENVELOPES.hardened_fighter_shelter
     },
     {
-      id: "fighter_shelter_row", name: "Three-Shelter Fighter Row",
+      id: "fighter_shelter_row", name: "Twin-Shelter Fighter Row",
       description: "Two hardened fighter shelters with an earth-covered ready room (briefing room and bunks) between them.",
       size: AIR_SIZES.fighter_shelter_row, foundationDepth: 2, envelope: AIR_ENVELOPES.fighter_shelter_row
     },
