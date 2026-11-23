@@ -55,6 +55,20 @@ export function fullRunwayLayout(id) {
   return { s, RW, RC, TCX, sizeX, thrN, thrS, zN, zS, zMid, size: { x: sizeX, y: 8, z: s.len } };
 }
 
+/**
+ * Edge-lamp positions for the sequenced ("rabbit") lights, as pairs of local
+ * cells directly UNDER each lamp, ordered from the south threshold (the end
+ * nearest the player when placed) toward the north end. The lamps light when
+ * the block under them becomes a redstone block.
+ */
+export function fullRunwayLampCells(id) {
+  const L = fullRunwayLayout(id);
+  const rwX2 = X0 + L.RW - 1;
+  const pairs = [];
+  for (let z = L.thrS - 1; z > L.thrN; z--) if (z % 8 === 4) pairs.push([[X0 + 1, SY - 1, z], [rwX2 - 1, SY - 1, z]]);
+  return pairs;
+}
+
 export const FULL_RUNWAY_SIZES = Object.fromEntries(Object.keys(FULL_RUNWAY_SPECS).map((id) => [id, fullRunwayLayout(id).size]));
 
 /** The apron-link stub on the east side: Taxiway and Apron modules snap on here. */
@@ -280,6 +294,13 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
   }
   // ILS-critical-area style marking where the taxiway joins the apron link
   for (let z = zMid - HALF_T + 2; z <= zMid + HALF_T - 2; z++) if (z % 2) c.set(size.x - 4, SY, z, c.B.yellow);
+
+  // ---- edge lamps go in last so taxiway lines crossing the shoulders never cover them;
+  // the block under each lamp is the support the light wave switches to redstone
+  for (let z = thrN + 1; z < thrS; z++) if (z % 8 === 4) for (const x of [X0 + 1, rwX2 - 1]) {
+    c.set(x, SY, z, c.B.lamp);
+    c.set(x, SY - 1, z, c.B.concrete);
+  }
 
   // ---- windsocks beside both thresholds ------------------------------------
   for (const end of ends) {

@@ -83,8 +83,11 @@ function runwayRows(c, z1, z2, opts = {}) {
       c.set(x, SY, z, b);
     }
     if (z % 8 === 4 && !opts.noLamps) {
+      // edge lamps stay lit: a redstone block is set into the foundation under each one
       c.set(2, SY, z, c.B.lamp);
       c.set(RUNWAY_W - 3, SY, z, c.B.lamp);
+      c.set(2, SY - 1, z, c.P("minecraft:redstone_block"));
+      c.set(RUNWAY_W - 3, SY - 1, z, c.P("minecraft:redstone_block"));
     }
   }
 }

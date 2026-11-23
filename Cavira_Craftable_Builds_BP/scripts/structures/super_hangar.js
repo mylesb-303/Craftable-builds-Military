@@ -193,6 +193,20 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
   // lighting is built into the floor: a flush grid of lights across the whole bay
   for (let z = 20; z <= 96; z += 6) for (const x of [12, 17, 23, 29, 35, 45, 51, 57, 63, 68]) c.set(x, WALK - 1, z, B.sea);
 
+  // suspended high-bay pendants: 3×3 lamp heads in a dark housing, hung on chains from the
+  // trusses, kept above the door height so nothing reaches into the aircraft envelope
+  const HEAD = SUPER_HANGAR_ENVELOPE.y2 + 2;
+  for (const px of [16, 28, 40, 52, 64]) for (const pz of [24, 40, 56, 72, 88]) {
+    const top = roofY(px) - 2; // underside of the truss
+    if (top < HEAD + 2) continue;
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      const inner = Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+      c.set(px + dx, HEAD, pz + dz, inner ? B.sea : c.P("minecraft:polished_blackstone_wall"));
+      if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) c.set(px + dx, HEAD + 1, pz + dz, c.slabTop("minecraft:polished_blackstone_slab"));
+    }
+    for (let y = HEAD + 2; y <= top; y++) c.set(px, y, pz, c.P("minecraft:chain"));
+  }
+
   // --- ground equipment, parked in the marked zone behind the aircraft ------
   hazardBorder(c, 11, WALK - 1, 14, 69, 20);
   // tow tractor

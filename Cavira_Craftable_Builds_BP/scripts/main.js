@@ -18,6 +18,7 @@ import {
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
 import { sectionPlan, sectionBounds } from "./sections.js";
 import { compileHologramSource, modelHologram, startHologram } from "./hologram.js";
+import { installRunwayLights, registerRunwayLights } from "./runway_lights.js";
 import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, lastLoadError, release, cleanupLeftovers } from "./chunk_loader.js";
@@ -574,6 +575,7 @@ async function resumeSections(player) {
     }
     LAST_BUILDS.set(player.id, { snapshots: result.snapshots, structureName: structure.name, variantName: variant.name });
     if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
+    registerRunwayLights(structure.id, dimension, origin, rotation);
     tell(player, `§a${structure.name} completed (${plan.length} sections).`);
   } catch (error) {
     console.warn(`[CAVIRA] Resume error: ${error}`);
@@ -636,6 +638,7 @@ async function constructPreview(player, session, trial = false) {
     }
     LAST_BUILDS.set(player.id, { snapshots, structureName: structure.name, variantName: variant.name });
     if (structure.snap) LAST_PIECE.set(player.id, { structure, origin, rotation, dimensionId: dimension.id });
+    registerRunwayLights(structure.id, dimension, origin, rotation);
     const r = result.reports ?? {};
     const extras = [];
     if (r.access?.fixed) extras.push(`${r.access.fixed} access route${r.access.fixed === 1 ? "" : "s"} opened`);
@@ -904,6 +907,7 @@ world.afterEvents.itemUse.subscribe((event) => {
 });
 
 world.afterEvents.worldLoad.subscribe(() => cleanupLeftovers());
+installRunwayLights();
 
 installPreviewGuard((playerId) => {
   TRIALS.delete(playerId);
