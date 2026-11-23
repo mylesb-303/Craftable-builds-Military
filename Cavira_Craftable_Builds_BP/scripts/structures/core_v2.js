@@ -111,11 +111,10 @@ export function buildMainSecurityGate(dimension, origin, rotation, variantId) {
   c.chair(11, WALK, 4, "west"); c.chair(13, WALK, 4, "east");
   c.set(11, WALK, 6, c.barrel("north")); c.set(13, WALK, 6, B.jukebox);
   for (let y = WALK; y <= WALK + 4; y++) c.set(12, y, 2, c.ladder("south"));
-  c.set(12, WALK + 3, 1, B.sea); // wall light behind the ladder
   c.set(12, WALK + 4, 4, B.sea); // recessed ceiling light
   // overwatch on the roof: sandbag parapet with firing slots
   for (let x = 10; x <= 14; x++) for (const z of [1, 7]) c.set(x, WALK + 5, z, B.mudBricks);
-  for (let z = 1; z <= 7; z++) for (const x of [10, 14]) c.set(x, WALK + 5, z, (z === 4) ? B.air : B.mudBricks);
+  for (let z = 1; z <= 7; z++) for (const x of [10, 14]) c.set(x, WALK + 5, z, B.mudBricks); // continuous parapet: nothing to fall through
   // canopy over both lanes on columns, lights set into its soffit, sign fascia
   for (const x of [1, 10, 14, 23]) for (const z of [1, 7]) c.fill(x, WALK, z, x, WALK + 6, z, B.blackstoneBricks);
   for (let x = 1; x <= 23; x++) for (let z = 0; z <= 8; z++) {
@@ -145,14 +144,15 @@ export function buildBaseHeadquarters(dimension, origin, rotation, variantId) {
       [{ u1: 4, u2: 9, type: "lobby" }, { u1: 11, u2: 18, type: "office" }],
       [{ u1: 4, u2: 10, type: "conference" }, { u1: 12, u2: 18, type: "command" }]
     ],
-    roofDeck: false
+    roofDeck: false, wideStairs: true
   });
   // classical portico: four columns and a pediment band, lights set into the soffit
-  for (const x of [7, 9, 11, 13]) c.fill(x, WALK, 14, x, WALK + 3, 14, c.P("minecraft:quartz_pillar"));
-  c.fill(6, WALK + 4, 12, 14, WALK + 4, 15, c.P("minecraft:quartz_block"));
-  c.set(8, WALK + 4, 15, B.sea); c.set(12, WALK + 4, 15, B.sea);
-  for (let x = 6; x <= 14; x++) c.set(x, WALK + 5, 15, c.stairs("minecraft:quartz_stairs", "north"));
-  c.fill(7, WALK + 5, 13, 13, WALK + 5, 14, c.P("minecraft:quartz_block"));
+  // (one storey tall so the pediment sits below the first-floor windows, never in front of them)
+  for (const x of [7, 9, 11, 13]) c.fill(x, WALK, 14, x, WALK + 2, 14, c.P("minecraft:quartz_pillar"));
+  c.fill(6, WALK + 3, 13, 14, WALK + 3, 15, c.P("minecraft:quartz_block"));
+  c.set(8, WALK + 3, 14, B.sea); c.set(12, WALK + 3, 14, B.sea);
+  for (let x = 6; x <= 14; x++) c.set(x, WALK + 4, 15, c.stairs("minecraft:quartz_stairs", "north"));
+  for (let x = 7; x <= 13; x++) c.set(x, WALK + 4, 14, c.slabTop("minecraft:quartz_slab"));
   for (let x = 7; x <= 13; x++) c.set(x, WALK - 1, 13, B.smooth), c.set(x, WALK - 1, 14, B.smooth);
   // roof parapet with flush lights
   for (let x = 1; x <= 19; x++) for (const z of [1, 12]) c.set(x, b.top, z, x % 6 === 4 ? B.sea : c.V.frame);

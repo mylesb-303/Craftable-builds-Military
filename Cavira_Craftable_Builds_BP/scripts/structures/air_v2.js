@@ -20,22 +20,23 @@ export const AIR_SIZES = {
   large_aircraft_hangar: { x: 51, y: 22, z: 62 },
   watch_tower: { x: 23, y: 64, z: 23 },
   helicopter_apron: { x: 41, y: 8, z: 41 },
-  helicopter_hangar: { x: 41, y: 14, z: 41 },
-  hardened_fighter_shelter: { x: 25, y: 13, z: 27 },
-  fighter_shelter_row: { x: 59, y: 13, z: 27 },
+  helicopter_hangar: { x: 61, y: 16, z: 58 },
+  hardened_fighter_shelter: { x: 25, y: 13, z: 35 },
+  fighter_shelter_row: { x: 59, y: 13, z: 35 },
   radar_radome_facility: { x: 33, y: 22, z: 33 },
   fuel_tank_farm: { x: 29, y: 14, z: 23 }
 };
 
 // --- envelopes (local boxes that must stay empty) ---------------------------
 const HAS_W = 25;
+const HAS_DEPTH = 31; // v1.11: longer shelter (SR-71 / F-15 length with clearance)
 const hasEnvelope = (x0) => [
-  { x1: x0 + 3, x2: x0 + 21, y1: WALK, y2: WALK + 2, z1: 2, z2: 26 },  // wings
-  { x1: x0 + 8, x2: x0 + 16, y1: WALK, y2: WALK + 6, z1: 2, z2: 26 }   // fuselage and fin
+  { x1: x0 + 3, x2: x0 + 21, y1: WALK, y2: WALK + 2, z1: 2, z2: HAS_DEPTH + 3 },  // wings
+  { x1: x0 + 8, x2: x0 + 16, y1: WALK, y2: WALK + 6, z1: 2, z2: HAS_DEPTH + 3 }   // fuselage and fin
 ];
 export const AIR_ENVELOPES = {
   large_aircraft_hangar: [{ x1: 3, x2: 47, y1: WALK, y2: WALK + 15, z1: 10, z2: 61 }],
-  helicopter_hangar: [{ x1: 2, x2: 38, y1: WALK, y2: WALK + 7, z1: 7, z2: 40 }],
+  helicopter_hangar: [{ x1: 3, x2: 57, y1: WALK, y2: WALK + 9, z1: 8, z2: 57 }],
   hardened_fighter_shelter: hasEnvelope(0),
   fighter_shelter_row: [...hasEnvelope(0), ...hasEnvelope(34)]
 };
@@ -93,6 +94,8 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
     c.clear(Math.floor((x1 + x2) / 2), WALK, 9, Math.floor((x1 + x2) / 2) + 1, WALK + 2, 9);
     furnishRoom(c, { x1, z1: 1, x2, z2: 8, walk: WALK, h: 4, type, door: "south", doorU: Math.floor((x2 - x1) / 2) });
   }
+  // operations room (back middle, ground floor): the whole back wall is a map board of item frames
+  for (let x = 18; x <= 32; x++) for (let y = WALK; y <= WALK + 3; y++) c.set(x, y, 1, c.itemFrame("south"));
   // mezzanine: crew room + flight planning, glazed toward the hangar floor, stair at the west end
   c.fill(1, WALK + 6, 9, 49, WALK + 9, 9, V.wall);
   for (let x = 2; x <= 48; x++) if (x % 4) for (const y of [WALK + 7, WALK + 8]) c.set(x, y, 9, B.lightBlueGlass);
@@ -109,13 +112,13 @@ export function buildLargeAircraftHangar(dimension, origin, rotation, variantId)
   c.set(2, WALK + 6, 10, B.rail);
   // floor: envelope outline, centreline, nose stop, tie-downs, flush floor lights
   const E = AIR_ENVELOPES.large_aircraft_hangar[0];
-  for (let z = E.z1; z <= front; z++) { c.set(E.x1, WALK - 1, z, B.lightBlue); c.set(E.x2, WALK - 1, z, B.lightBlue); if (z % 4 !== 3) c.set(25, WALK - 1, z, B.yellow); }
+  for (let z = E.z1; z <= front; z++) { c.set(E.x1, WALK - 1, z, B.lightBlue); c.set(E.x2, WALK - 1, z, B.lightBlue); c.set(25, WALK - 1, z, B.yellow); }
   for (let x = E.x1; x <= E.x2; x++) c.set(x, WALK - 1, E.z1, B.lightBlue);
   for (let x = 22; x <= 28; x++) c.set(x, WALK - 1, 14, B.white);
   for (let z = 14; z <= 52; z += 6) for (let x = 6; x <= 44; x += 6) c.set(x, WALK - 1, z, B.sea);
   // apron
   c.fill(0, WALK - 1, BODY, 50, WALK - 1, size.z - 1, B.black);
-  for (let z = BODY; z < size.z; z++) if (z % 4 !== 3) c.set(25, WALK - 1, z, B.yellow);
+  for (let z = BODY; z < size.z; z++) c.set(25, WALK - 1, z, B.yellow);
   for (let x = 3; x <= 47; x += 4) c.set(x, WALK - 1, size.z - 2, B.sea);
 }
 
@@ -211,67 +214,75 @@ export function buildHelicopterApron(dimension, origin, rotation, variantId) {
 }
 
 // ---------------------------------------------------------------------------
-// Helicopter Hangar — 37 m clear door for Chinook / Apache / Osprey, rear support wing
+// Helicopter Hangar (v1.11: enlarged) — 55 m clear door, 10 m clear height and
+// 44 m clear depth: two CH-47 Chinooks (30 m long with rotors, 18.3 m discs)
+// side by side, or Apache / Osprey / Ghost Hawk. Rear support wing + mezzanine.
 // ---------------------------------------------------------------------------
 export function buildHelicopterHangar(dimension, origin, rotation, variantId) {
   const { c, size } = ctx("helicopter_hangar", dimension, origin, rotation, variantId);
   const B = c.B, V = c.V;
-  const BODY = 35, front = BODY - 1, H = 11;
-  c.fill(0, WALK - 2, 0, 40, WALK - 2, size.z - 1, B.concrete);
-  c.fill(0, WALK - 1, 0, 40, WALK - 1, front, B.smooth);
-  c.walls(0, WALK, 0, 40, WALK + H - 1, front, V.wall);
-  for (let z = 0; z <= front; z += 5) for (const x of [0, 40]) c.fill(x, WALK, z, x, WALK + H - 1, z, V.frame);
-  c.clear(1, WALK, 1, 39, WALK + H - 1, front - 1);
-  for (let z = 2; z < front; z++) if (z % 5) for (const x of [0, 40]) { c.set(x, WALK + 8, z, B.glass); c.set(x, WALK + 9, z, B.glass); }
+  const X2 = 60, BODY = 52, front = BODY - 1, H = 13;
+  c.fill(0, WALK - 2, 0, X2, WALK - 2, size.z - 1, B.concrete);
+  c.fill(0, WALK - 1, 0, X2, WALK - 1, front, B.smooth);
+  c.walls(0, WALK, 0, X2, WALK + H - 1, front, V.wall);
+  for (let z = 0; z <= front; z += 5) for (const x of [0, X2]) c.fill(x, WALK, z, x, WALK + H - 1, z, V.frame);
+  c.clear(1, WALK, 1, X2 - 1, WALK + H - 1, front - 1);
+  for (let z = 2; z < front; z++) if (z % 5) for (const x of [0, X2]) { c.set(x, WALK + 10, z, B.glass); c.set(x, WALK + 11, z, B.glass); }
   // roof: low-pitch with roof lights built into the purlins
-  for (let x = 0; x <= 40; x++) for (let z = 0; z <= front; z++) {
+  for (let x = 0; x <= X2; x++) for (let z = 0; z <= front; z++) {
     c.set(x, WALK + H, z, (x % 8 === 4 && z % 5 === 2 && z > 1 && z < front - 1) ? B.sea : B.tile);
-    if (x === 0 || x === 40 || z === 0 || z === front) c.set(x, WALK + H + 1, z, V.frame);
+    if (x === 0 || x === X2 || z === 0 || z === front) c.set(x, WALK + H + 1, z, V.frame);
   }
-  hangarDoor(c, 2, 38, front, WALK + 8, 1);
-  for (let x = 1; x <= 39; x++) for (let y = WALK + 9; y < WALK + H; y++) c.set(x, y, front, V.wall);
+  hangarDoor(c, 3, 57, front, WALK + 10, 2);
+  for (let x = 1; x <= X2 - 1; x++) for (let y = WALK + 11; y < WALK + H; y++) c.set(x, y, front, V.wall);
   // rear support wing z 1..6: workshop, avionics, crew room; mezzanine stores above
-  c.fill(1, WALK, 6, 39, WALK + 4, 6, V.wall);
-  for (const x of [13, 27]) c.fill(x, WALK, 1, x, WALK + 4, 5, V.wall);
-  for (let x = 2; x <= 38; x++) if (x % 4) { c.set(x, WALK + 2, 6, B.glass); c.set(x, WALK + 3, 6, B.glass); }
-  c.fill(1, WALK + 5, 1, 39, WALK + 5, 6, B.andesite);
-  for (const [x1, x2, type] of [[1, 12, "workshop"], [14, 26, "servers"], [28, 39, "mess"]]) {
+  c.fill(1, WALK, 6, X2 - 1, WALK + 4, 6, V.wall);
+  for (const x of [20, 40]) c.fill(x, WALK, 1, x, WALK + 4, 5, V.wall);
+  for (let x = 2; x <= X2 - 2; x++) if (x % 4) { c.set(x, WALK + 2, 6, B.glass); c.set(x, WALK + 3, 6, B.glass); }
+  c.fill(1, WALK + 5, 1, X2 - 1, WALK + 5, 6, B.andesite);
+  for (const [x1, x2, type] of [[1, 19, "workshop"], [21, 39, "servers"], [41, 59, "mess"]]) {
     const mid = Math.floor((x1 + x2) / 2);
     c.clear(mid, WALK, 6, mid + 1, WALK + 2, 6);
     furnishRoom(c, { x1, z1: 1, x2, z2: 5, walk: WALK, h: 4, type, door: "south", doorU: mid - x1 });
   }
-  // mezzanine stores reached by a stair along the west wall
-  for (let x = 2; x <= 38; x++) c.set(x, WALK + 6, 6, x % 5 === 0 ? B.yellow : B.rail);
-  for (let k = 0; k < 6; k++) { c.set(1, WALK + k, 12 - k, c.stairs("minecraft:polished_deepslate_stairs", "north")); c.fill(1, WALK - 1, 12 - k, 1, WALK + k - 1, 12 - k, B.concrete); }
-  c.clear(1, WALK + 6, 6, 1, WALK + 7, 6);
-  for (let x = 3; x <= 37; x += 3) { c.set(x, WALK + 6, 1, c.barrel("south")); c.set(x, WALK + 6, 2, c.barrel("south")); }
-  // floor: two parking spots with "H" marks, centrelines, flush lights
+  // mezzanine stores reached by a 2-wide stair along the west wall (outside the aircraft envelope)
+  for (let x = 3; x <= X2 - 2; x++) c.set(x, WALK + 6, 6, x % 5 === 0 ? B.yellow : B.rail);
+  for (let k = 0; k < 6; k++) for (const x of [1, 2]) { c.set(x, WALK + k, 12 - k, c.stairs("minecraft:polished_deepslate_stairs", "north")); c.fill(x, WALK - 1, 12 - k, x, WALK + k - 1, 12 - k, B.concrete); }
+  c.clear(1, WALK + 6, 6, 2, WALK + 8, 6);
+  c.fill(1, WALK + 5, 6, 2, WALK + 5, 6, B.andesite);
+  for (let x = 4; x <= X2 - 3; x += 3) { c.set(x, WALK + 6, 1, c.barrel("south")); c.set(x, WALK + 6, 2, c.barrel("south")); }
+  // floor: two Chinook spots with "H" marks, solid lit centrelines, flush lights
   const E = AIR_ENVELOPES.helicopter_hangar[0];
   for (let z = E.z1; z <= front; z++) { c.set(E.x1, WALK - 1, z, B.lightBlue); c.set(E.x2, WALK - 1, z, B.lightBlue); }
-  for (const hx of [11, 29]) {
-    for (let z = 15; z <= 21; z++) { c.set(hx - 2, WALK - 1, z, B.white); c.set(hx + 2, WALK - 1, z, B.white); }
-    for (let x = hx - 1; x <= hx + 1; x++) c.set(x, WALK - 1, 18, B.white);
-    for (let z = 23; z <= front; z++) if (z % 3) c.set(hx, WALK - 1, z, B.yellow);
+  for (const hx of [16, 44]) {
+    for (let z = 21; z <= 29; z++) { c.set(hx - 3, WALK - 1, z, B.white); c.set(hx + 3, WALK - 1, z, B.white); }
+    for (let x = hx - 2; x <= hx + 2; x++) c.set(x, WALK - 1, 25, B.white);
+    for (let r = 0; r < 360; r += 3) { const a = (r * Math.PI) / 180; c.set(Math.round(hx + Math.cos(a) * 9), WALK - 1, Math.round(25 + Math.sin(a) * 9), B.yellow); }
+    for (let z = 35; z <= front; z++) c.set(hx, WALK - 1, z, z % 8 === 4 ? B.sea : B.yellow);
   }
-  for (let z = 10; z <= 32; z += 5) for (const x of [5, 15, 20, 25, 35]) c.set(x, WALK - 1, z, B.sea);
-  // apron with dolly tracks
-  c.fill(0, WALK - 1, BODY, 40, WALK - 1, size.z - 1, B.black);
-  for (const hx of [11, 29]) for (let z = BODY; z < size.z; z++) if (z % 3) c.set(hx, WALK - 1, z, B.yellow);
+  for (let z = 12; z <= 48; z += 6) for (const x of [6, 30, 54]) c.set(x, WALK - 1, z, B.sea);
+  // apron with tow lines
+  c.fill(0, WALK - 1, BODY, X2, WALK - 1, size.z - 1, B.black);
+  for (const hx of [16, 44]) for (let z = BODY; z < size.z; z++) c.set(hx, WALK - 1, z, B.yellow);
 }
 
 // ---------------------------------------------------------------------------
 // Hardened Aircraft Shelter (TAB-VEE style) — steel-lined concrete arch for
 // one fighter, retracted door leaves, rear exhaust port, in-shelter services
 // ---------------------------------------------------------------------------
-function hasShelter(c, x0, depth = 23) {
+function hasShelter(c, x0, depth = HAS_DEPTH) {
   const B = c.B, V = c.V;
   const cx = x0 + 12, rx = 11.5, ry = 10;
-  const outer = (x) => WALK + Math.round(ry * Math.sqrt(Math.max(0, 1 - ((x - cx) / rx) ** 2)));
+  const outer = (x) => (x < x0 || x >= x0 + HAS_W) ? WALK - 1 : WALK + Math.round(ry * Math.sqrt(Math.max(0, 1 - ((x - cx) / rx) ** 2)));
   c.fill(x0, WALK - 1, 0, x0 + HAS_W - 1, WALK - 1, depth - 1, B.smooth);
   for (let x = x0; x < x0 + HAS_W; x++) {
     const top = outer(x);
+    // v1.11: the shell runs down to meet the neighbouring column (no gaps where the arch is steep)
+    // and the two outermost columns on each side are solid to the ground (no open line at the base)
+    const edge = x - x0 <= 1 || x0 + HAS_W - 1 - x <= 1;
+    const low = edge ? WALK : Math.max(WALK, Math.min(top - 1, Math.min(outer(x - 1), outer(x + 1)) + 1));
     for (let z = 0; z < depth; z++) {
-      for (let y = Math.max(WALK, top - 1); y <= top; y++) c.set(x, y, z, y === top ? V.camoA : (z % 4 === 0 ? B.tile : c.P("minecraft:iron_block")));
+      for (let y = low; y <= top; y++) c.set(x, y, z, y === top ? V.camoA : (z % 4 === 0 ? B.tile : c.P("minecraft:iron_block")));
       // ribs of recessed lights in the steel liner
       if (z % 4 === 2 && z > 1 && z < depth - 2 && Math.abs(x - cx) % 6 === 3 && top - 2 >= WALK + 3) c.set(x, top - 1, z, B.sea);
     }
@@ -283,13 +294,12 @@ function hasShelter(c, x0, depth = 23) {
   // front portal frame and retracted door-leaf pockets (striped) at the sides
   for (let x = x0; x < x0 + HAS_W; x++) c.set(x, outer(x), depth - 1, c.V.frame);
   for (const xx of [x0, x0 + HAS_W - 1]) for (let y = WALK; y <= WALK + 3; y++) for (let z = depth - 3; z < depth; z++) c.set(xx, y, z, (y + z) % 4 < 2 ? B.yellow : B.black);
-  // floor: centreline, nose stop, tie-down rings, in-floor refuelling pit and lights
-  for (let z = 3; z < depth + 4; z++) if (z % 3) c.set(cx, WALK - 1, z, B.yellow);
+  // floor: solid lit centreline, nose stop, tie-down rings and lights (flat floor throughout)
+  for (let z = 3; z < depth + 4; z++) c.set(cx, WALK - 1, z, z % 8 === 4 ? B.sea : B.yellow);
   for (let x = cx - 2; x <= cx + 2; x++) c.set(x, WALK - 1, 5, B.white);
-  c.set(cx + 4, WALK - 1, 10, B.ironTrapdoor);
   for (let z = 4; z < depth; z += 5) for (const dx of [-7, -3, 3, 7]) c.set(cx + dx, WALK - 1, z, B.sea);
   // apron in front
-  for (let x = x0; x < x0 + HAS_W; x++) for (let z = depth; z < depth + 4; z++) c.set(x, WALK - 1, z, B.black);
+  for (let x = x0; x < x0 + HAS_W; x++) for (let z = depth; z < depth + 4; z++) c.set(x, WALK - 1, z, x === cx ? B.yellow : B.black);
 }
 
 export function buildHardenedFighterShelter(dimension, origin, rotation, variantId) {
@@ -305,10 +315,11 @@ export function buildFighterShelterRow(dimension, origin, rotation, variantId) {
   c.fill(0, WALK - 1, 0, size.x - 1, WALK - 1, size.z - 1, B.andesite);
   hasShelter(c, 0);
   hasShelter(c, 34);
-  // hardened ready room between the shelters (x 25..33), earth-covered
+  // hardened ready room between the shelters (x 25..33), reinforced concrete roof
   c.walls(25, WALK, 2, 33, WALK + 4, 20, B.concrete);
   c.fill(25, WALK + 5, 2, 33, WALK + 5, 20, B.concrete);
-  c.fill(25, WALK + 6, 2, 33, WALK + 6, 20, B.grass);
+  for (let x = 25; x <= 33; x++) for (const z of [2, 20]) c.set(x, WALK + 6, z, B.tile);
+  for (let z = 2; z <= 20; z++) for (const x of [25, 33]) c.set(x, WALK + 6, z, B.tile);
   c.clear(26, WALK, 3, 32, WALK + 4, 19);
   furnishRoom(c, { x1: 26, z1: 3, x2: 32, z2: 10, walk: WALK, h: 4, type: "briefing", door: "south", doorU: 3 });
   furnishRoom(c, { x1: 26, z1: 12, x2: 32, z2: 19, walk: WALK, h: 4, type: "bunks", door: "north", doorU: 3 });
@@ -351,10 +362,10 @@ export function buildRadarRadomeFacility(dimension, origin, rotation, variantId)
   furnishRoom(c, { x1: X1 + 1, z1: Z1 + 1, x2: 12, z2: Z2 - 1, walk: WALK, h: 4, type: "generator", door: "east", doorU: 5 });
   furnishRoom(c, { x1: 20, z1: Z1 + 1, x2: X2 - 1, z2: Z2 - 1, walk: WALK, h: 4, type: "comms", door: "west", doorU: 14 });
   // stair up through the central hall (climbing north), and again to the roof
-  stairFlight(c, 16, 22, "north", WALK, FH);
-  c.clear(15, WALK + FH, 13, 17, WALK + FH + 2, 17);
-  stairFlight(c, 15, 13, "south", WALK + FH, FH);
-  c.clear(15, WALK + 2 * FH - 1, 14, 15, WALK + 2 * FH + 1, 18);
+  // v1.11: both flights 2 wide, and the top step onto the roof is kept (it used to be carved away)
+  stairFlight(c, 16, 22, "north", WALK, FH, undefined, 2, "east");
+  c.clear(14, WALK + FH, 13, 17, WALK + FH + 2, 17);
+  stairFlight(c, 15, 13, "south", WALK + FH, FH, undefined, 2, "west");
   // upper floor: radar processing (servers) and operations room
   furnishRoom(c, { x1: X1 + 1, z1: Z1 + 1, x2: 13, z2: Z2 - 1, walk: WALK + FH, h: 4, type: "servers", door: "east", doorU: 7 });
   furnishRoom(c, { x1: 18, z1: Z1 + 1, x2: X2 - 1, z2: Z2 - 1, walk: WALK + FH, h: 4, type: "command", door: "west", doorU: 12 });
@@ -363,16 +374,16 @@ export function buildRadarRadomeFacility(dimension, origin, rotation, variantId)
   for (let i = X1; i <= X2; i++) { c.set(i, R, Z1, B.rail); c.set(i, R, Z2, B.rail); c.set(X1, R, i, B.rail); c.set(X2, R, i, B.rail); }
   for (let x = cx - 8; x <= cx + 8; x++) for (let z = cz - 8; z <= cz + 8; z++) for (let y = R; y <= R + 8; y++) {
     const d = Math.hypot(x - cx, (y - R) * 1.0, z - cz);
-    if (d > 8.5 || d < 7.5 || y > size.y - 1) continue;
+    if (d > 8.5 || d < 7.0 || y > size.y - 1) continue; // 1.5-thick shell: no gaps between blocks
     const seam = (Math.abs(x - cx) + Math.abs(z - cz) + (y - R)) % 4 === 0;
     c.set(x, y, z, seam ? B.lightGrey : B.white);
   }
   // radar array inside the dome and an access hatch from the roof
-  radarArray(c, { center: { x: cx, y: R + 4, z: cz }, width: 7, height: 4, tilt: 20 });
+  radarArray(c, { center: { x: cx, y: R + 3, z: cz }, width: 5, height: 3, tilt: 20, beacons: false }); // fully inside the dome
   c.fill(cx, R, cz, cx, R + 2, cz, B.blackstoneBricks);
   c.clear(cx, R, cz + 8, cx, R + 1, cz + 8);
-  // aircraft warning lights set into the dome crown
-  c.set(cx, R + 8, cz, B.red);
+  // aircraft warning light on the dome crown (redstone block + hidden light)
+  c.warnLight(cx, R + 8, cz);
 }
 
 // ---------------------------------------------------------------------------

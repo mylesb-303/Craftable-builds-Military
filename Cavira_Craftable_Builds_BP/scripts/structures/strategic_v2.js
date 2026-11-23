@@ -53,6 +53,12 @@ export function dishOnMount(c, o) {
   return v;
 }
 
+/** Extra steps up onto a dish turntable, laid after the dish so nothing carves them away. */
+function topSteps(c, x, z, up, y, n, width = 2) {
+  const d = { north: [0, -1], south: [0, 1] }[up];
+  for (let i = 0; i < n; i++) for (let k = 0; k < width; k++) c.set(x + k, y + i, z + d[1] * i, c.stairs("minecraft:polished_deepslate_stairs", up));
+}
+
 /** Rotating phased-array radar on a turntable pedestal. */
 export function arrayOnPedestal(c, o) {
   const { cx, cz, baseY, width, height } = o;
@@ -100,7 +106,7 @@ export function buildMediumRadarStation(dimension, origin, rotation, variantId) 
     floors: [[{ u1: 12, u2: 19, type: "servers" }, { u1: 21, u2: 28, type: "storage" }], [{ u1: 12, u2: 28, type: "command" }]], roofDeck: true
   });
   // lattice tower on the roof with the T-array
-  latticeMast(c, { x: 17, z: 11, y1: b.top, y2: b.top + 8, width: 5, beacon: false });
+  latticeMast(c, { x: 17, z: 11, y1: b.top, y2: b.top + 8, width: 5, beacon: false, solidFaces: true });
   c.fill(17, b.top + 9, 11, 21, b.top + 9, 15, c.B.tile);
   arrayOnPedestal(c, { cx: 19, cz: 13, baseY: b.top + 9, width: 21, height: 7, pedestalH: 2 });
   // secondary antennas and floodlights
@@ -140,7 +146,8 @@ export function buildLargeEarlyWarningRadarComplex(dimension, origin, rotation, 
     y += h;
   }
   // maintenance stairs up the pyramid from the roof deck
-  externalStairs(c, 22, 29, "north", b.top, y - b.top, 2, "minecraft:polished_deepslate_stairs");
+  // stairs run all the way up onto the turntable (the old top step was carved away)
+  externalStairs(c, 22, 29, "north", b.top, y - b.top + 1, 2, "minecraft:polished_deepslate_stairs");
   arrayOnPedestal(c, { cx: 25, cz: 21, baseY: y, width: 33, height: 11, pedestalH: 3, tilt: 12 });
   // twin lattice antenna towers
   latticeMast(c, { x: 12, z: 11, y1: b.top, y2: b.top + 13, width: 3 });
@@ -165,6 +172,7 @@ export function buildSmallCommunicationsDishStation(dimension, origin, rotation,
   c.fill(16, WALK, 9, 16, b.top + 1, 9, c.B.basalt);
   externalStairs(c, 9, 14, "north", b.top, 2, 2, "minecraft:polished_deepslate_stairs");
   dishOnMount(c, { cx: 10, cz: 9, baseY: b.top + 2, R: 7, tilt: 42, toward: "south", yaw: 35 });
+  topSteps(c, 9, 11, "north", b.top + 2, 1);
 }
 
 export function buildMediumSatelliteDishStation(dimension, origin, rotation, variantId) {
@@ -182,6 +190,7 @@ export function buildMediumSatelliteDishStation(dimension, origin, rotation, var
   externalStairs(c, 16, 22, "north", b.top, top - b.top + 1, 2, "minecraft:polished_deepslate_stairs");
   c.fill(23, b.top, 15, 24, b.top + 1, 15, c.B.concrete);
   dishOnMount(c, { cx: 17, cz: 15, baseY: top + 1, R: 11, tilt: 45, toward: "south", yaw: -30 });
+  topSteps(c, 16, 18, "north", top + 1, 2);
   // ground plant
   c.fill(30, WALK, 8, 32, WALK + 2, 12, c.B.lightGrey);
   c.set(31, WALK + 1, 12, c.B.bars);
@@ -207,6 +216,7 @@ export function buildLargeStrategicSatelliteArray(dimension, origin, rotation, v
   const mainTop = tieredPlinth(c, 28, 27, b.top, [{ r: 8, h: 2, block: c.B.tile, rail: true, railR: 8, lights: 12 }, { r: 5, h: 3, block: c.B.blackstoneBricks, lights: 8 }]);
   externalStairs(c, 26, 36, "north", b.top, mainTop - b.top + 1, 2, "minecraft:polished_deepslate_stairs");
   dishOnMount(c, { cx: 28, cz: 27, baseY: mainTop + 1, R: 15, tilt: 38, toward: "south", rimLight: c.B.froglight, rimLightEvery: 4 });
+  topSteps(c, 26, 31, "north", mainTop + 1, 2);
   // two auxiliary dish towers
   for (const [tx, yaw] of [[8, 35], [48, -35]]) {
     c.fill(tx - 3, WALK - 1, 22, tx + 3, WALK + 13, 28, c.B.tile);
@@ -240,9 +250,10 @@ export function buildStandaloneSmallSatelliteDish(dimension, origin, rotation, v
   for (const [x, z] of [[6, 11], [10, 11]]) c.fill(x, WALK, z + 1, x, WALK + 4, z + 1, c.B.basalt);
   // maintenance ladder & railed platform
   c.fill(11, WALK + 5, 7, 13, WALK + 5, 9, c.B.andesite);
-  for (const [x, z] of [[13, 7], [13, 8], [13, 9], [12, 7], [12, 9]]) c.set(x, WALK + 6, z, c.B.rail);
-  for (let y = WALK; y <= WALK + 5; y++) c.set(12, y, 10, c.ladder("south"));
-  c.fill(12, WALK, 11, 12, WALK + 5, 11, c.B.tile);
+  for (const [x, z] of [[13, 7], [13, 8], [13, 9], [12, 7], [11, 9]]) c.set(x, WALK + 6, z, c.B.rail);
+  // ladder hangs on a solid concrete column (z 11) and reaches the platform; gap in the rail above it
+  c.fill(12, WALK, 11, 12, WALK + 6, 11, c.B.tile);
+  for (let y = WALK; y <= WALK + 5; y++) c.set(12, y, 10, c.ladder("north"));
   dishOnMount(c, { cx: 8, cz: 8, baseY: WALK + 8, R: 6, tilt: 40, toward: "south", yaw: 30 });
 }
 

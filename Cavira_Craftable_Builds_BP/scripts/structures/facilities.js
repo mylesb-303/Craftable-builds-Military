@@ -16,7 +16,7 @@ export const FACILITY_SIZES = {
   army_barracks: { x: 33, y: 26, z: 21 },
   officers_quarters: { x: 29, y: 20, z: 25 },
   army_armoury: { x: 27, y: 12, z: 23 },
-  army_vehicle_depot: { x: 43, y: 16, z: 35 },
+  army_vehicle_depot: { x: 51, y: 19, z: 35 },
   army_medical_facility: { x: 35, y: 18, z: 27 },
   army_command_bunker: { x: 29, y: 14, z: 27 },
   airfield_operations_building: { x: 35, y: 20, z: 25 },
@@ -158,7 +158,7 @@ export function hall(c, o) {
   const { x1, z1, x2, z2, h } = o;
   c.fill(x1, WALK - 1, z1, x2, WALK - 1, z2, c.B.smooth);
   c.walls(x1, WALK, z1, x2, WALK + h - 1, z2, c.V.wall);
-  for (let x = x1; x <= x2; x += 6) c.fill(x, WALK, z1, x, WALK + h - 1, z1, c.V.frame);
+  for (let x = x1; x <= x2; x += o.frameStep ?? 6) c.fill(x, WALK, z1, x, WALK + h - 1, z1, c.V.frame);
   for (let z = z1; z <= z2; z += 6) { c.fill(x1, WALK, z, x1, WALK + h - 1, z, c.V.frame); c.fill(x2, WALK, z, x2, WALK + h - 1, z, c.V.frame); }
   c.clear(x1 + 1, WALK, z1 + 1, x2 - 1, WALK + h + 8, z2 - 1);
   // high clerestory windows
@@ -185,12 +185,12 @@ export function buildArmyBarracksV2(dimension, origin, rotation, variantId) {
       [{ u1: 5, u2: 16, type: "bunks" }, { u1: 18, u2: 29, type: "bunks" }],
       [{ u1: 5, u2: 16, type: "bunks" }, { u1: 18, u2: 29, type: "decon" }]
     ],
-    doorX: 16
+    doorX: 16, wideStairs: true, partitions: true
   });
   gableRoof(c, 2, 2, 30, 15, b.top, { axis: "x" });
   canopy(c, 13, 19, 15, WALK + 4);
   // external fire escape on the east end
-  externalStairs(c, 31, 14, "north", WALK, 6, 1, "minecraft:polished_deepslate_stairs");
+  externalStairs(c, 31, 14, "north", WALK, 6, 2, "minecraft:polished_deepslate_stairs");
   c.fill(31, WALK + 5, 3, 32, WALK + 5, 8, c.B.andesite);
   c.clear(30, WALK + 6, 5, 30, WALK + 7, 6);
   flagpole(c, 5, 18, 8, [c.B.green, c.B.black]);
@@ -203,26 +203,34 @@ export function buildOfficersQuartersV2(dimension, origin, rotation, variantId) 
   const b = opsBuilding(c, {
     x1: 2, z1: 2, x2: 26, z2: 15, walk: WALK, floorH: 6, wall: brick,
     floors: [[{ u1: 5, u2: 14, type: "mess" }, { u1: 16, u2: 25, type: "office" }], [{ u1: 5, u2: 25, type: "officers" }]],
-    doorX: 14
+    doorX: 14, wideStairs: true, partitions: true
   });
   gableRoof(c, 2, 2, 26, 15, b.top, { axis: "x", stair: "minecraft:dark_oak_stairs", fill: c.B.darkOak, gable: brick });
   // colonnaded veranda along the front
   c.fill(2, WALK - 1, 16, 26, WALK - 1, 18, c.B.smooth);
   c.fill(2, WALK + 4, 16, 26, WALK + 4, 18, c.P("minecraft:quartz_block"));
   for (let x = 2; x <= 26; x += 4) c.fill(x, WALK, 18, x, WALK + 3, 18, c.P("minecraft:quartz_pillar"));
-  for (let x = 4; x <= 24; x += 4) c.set(x, WALK + 3, 17, c.B.lantern);
+  for (let x = 4; x <= 24; x += 4) c.set(x, WALK + 3, 17, c.hangingLantern()); // hung from the veranda roof so they never drop
   // lawn and hedges
   for (let x = 1; x < size.x - 1; x++) if (x < 12 || x > 16) { c.set(x, WALK, 21, c.P("minecraft:oak_leaves")); }
 }
 
 export function buildArmyArmouryV2(dimension, origin, rotation, variantId) {
   const { c, size } = ctx("army_armoury", dimension, origin, rotation, variantId);
+  const B = c.B;
   site(c, size, 12, 14, 18);
-  // hardened single-storey magazine with earth berm on three sides
+  // v1.11: free-standing hardened magazine (no earth mound) — reinforced concrete walls
+  // with pilasters, a ribbed blast roof, hazard-striped blast-door portal and guard booth.
   c.room(5, WALK - 1, 4, 21, WALK + 6, 17, c.B.concrete, c.B.smooth, c.B.concrete);
+  for (let x = 5; x <= 21; x += 4) for (const z of [4, 17]) c.fill(x, WALK - 1, z, x, WALK + 6, z, B.tile);
+  for (let z = 4; z <= 17; z += 4) for (const x of [5, 21]) c.fill(x, WALK - 1, z, x, WALK + 6, z, B.tile);
+  for (const [x, z] of [[5, 4], [21, 4], [5, 17], [21, 17]]) c.fill(x, WALK - 1, z, x, WALK + 7, z, B.blackstoneBricks);
   furnishRoom(c, { x1: 6, z1: 5, x2: 20, z2: 16, walk: WALK, h: 6, type: "armoury", door: "south", doorU: 7 });
-  berm(c, 5, 4, 21, 17, WALK, 6, ["north", "east", "west"]);
-  c.fill(4, WALK + 7, 3, 22, WALK + 7, 18, c.B.grass);
+  // blast roof: thick slab with a raised rib every 4 blocks and a parapet
+  c.fill(5, WALK + 7, 4, 21, WALK + 7, 17, B.concrete);
+  for (let x = 5; x <= 21; x++) for (const z of [4, 17]) c.set(x, WALK + 7, z, B.blackstoneBricks);
+  for (let z = 4; z <= 17; z++) for (const x of [5, 21]) c.set(x, WALK + 7, z, B.blackstoneBricks);
+  for (let x = 7; x <= 19; x += 4) for (let z = 5; z <= 16; z++) c.set(x, WALK + 7, z, B.tile);
   // blast-door portal with hazard frame and guard booth
   c.clear(12, WALK, 17, 14, WALK + 2, 17);
   c.fill(11, WALK, 18, 15, WALK + 3, 18, c.B.blackstoneBricks);
@@ -232,30 +240,47 @@ export function buildArmyArmouryV2(dimension, origin, rotation, variantId) {
   c.room(17, WALK - 1, 19, 20, WALK + 3, 21, c.V.wall, c.V.floor, c.V.accent);
   c.clear(17, WALK, 20, 17, WALK + 1, 20);
   c.set(18, WALK, 20, c.B.blackstone); c.set(18, WALK + 1, 20, c.B.daylight);
+  // signal mast with a red warning light (redstone block + hidden light)
   latticeMast(c, { x: 12, z: 10, y1: WALK + 8, y2: WALK + 10, width: 1 });
 }
 
 export function buildArmyVehicleDepotV2(dimension, origin, rotation, variantId) {
   const { c, size } = ctx("army_vehicle_depot", dimension, origin, rotation, variantId);
-  site(c, size, 19, 23, 28);
-  hall(c, { x1: 2, z1: 2, x2: 40, z2: 27, h: 8, roof: "sawtooth" });
-  for (const x of [5, 15, 25]) bigDoor(c, x, x + 7, 27, 6);
-  // office block inside the east end, with a mezzanine reached by stairs
+  const B = c.B;
+  // v1.11: open apron (no lamp posts or bollards in front of the bays), taller hall so the
+  // overview deck has full headroom, fully open front with columns on the bay lines.
+  c.fill(0, WALK - 1, 0, size.x - 1, WALK - 1, size.z - 1, B.andesite);
+  for (let x = 3; x <= 39; x++) for (let z = 28; z < size.z; z++) c.set(x, WALK - 1, z, B.black);
+  const H = 11;
+  hall(c, { x1: 2, z1: 2, x2: 40, z2: 27, h: H, roof: "sawtooth", bayStep: 10, frameStep: 10 });
+  // front: one continuous opening x 3..39, 7 high, with columns centred on the bay lines (x 12, 22, 32)
+  c.clear(3, WALK, 27, 39, WALK + 6, 27);
+  for (let x = 3; x <= 39; x++) c.set(x, WALK + 7, 27, x % 2 ? B.yellow : B.black);
+  for (const x of [12, 22, 32]) { c.fill(x, WALK, 27, x, WALK + H - 1, 27, c.V.frame); c.set(x, WALK - 1, 27, B.yellow); }
+  for (const x of [12, 22, 32]) for (let z = 28; z < size.z; z++) c.set(x, WALK - 1, z, B.yellow); // bay lines continue onto the apron
+  for (const x of [11, 13, 21, 23, 31, 33]) c.set(x, WALK + 5, 27, B.sea);
+  // office block inside the east end, with an overview deck reached by 2-wide stairs
   c.room(33, WALK - 1, 3, 39, WALK + 4, 12, c.V.wall, c.V.floor, c.B.andesite);
   c.clear(33, WALK, 9, 33, WALK + 2, 10);
   furnishRoom(c, { x1: 34, z1: 4, x2: 38, z2: 11, walk: WALK, h: 4, type: "office", door: "west", doorU: 2 });
-  stairFlight(c, 33, 19, "north", WALK, 6);
+  stairFlight(c, 38, 19, "north", WALK, 6, "minecraft:polished_deepslate_stairs", 2, "east");
   c.fill(33, WALK + 5, 3, 39, WALK + 5, 13, c.B.andesite);
-  for (let x = 34; x <= 39; x++) c.set(x, WALK + 6, 13, c.B.rail);
-  furnishRoom(c, { x1: 34, z1: 4, x2: 38, z2: 11, walk: WALK + 6, h: 4, type: "storage", door: "south", doorU: 2 });
-  // workshop benches along the north wall, wash bay and fuel island outside
+  for (let x = 33; x <= 37; x++) c.set(x, WALK + 6, 13, c.B.rail);
+  for (let z = 3; z <= 13; z++) c.set(33, WALK + 6, z, c.B.rail);
+  // deck furniture: map table and chairs looking out over the bays (low, nothing near the roof)
+  for (let x = 34; x <= 36; x++) c.set(x, WALK + 6, 8, c.slabTop("minecraft:spruce_slab"));
+  c.chair(35, WALK + 6, 9, "north");
+  c.set(38, WALK + 6, 4, c.barrel("west")); c.set(38, WALK + 6, 6, c.barrel("west"));
+  // workshop benches along the north wall
   furnishRoom(c, { x1: 3, z1: 3, x2: 31, z2: 8, walk: WALK, h: 7, type: "workshop", door: "south", doorU: 14 });
-  c.fill(3, WALK - 1, 29, 12, WALK - 1, 33, c.B.blueGlass);
-  hazardBorder(c, 3, WALK - 1, 29, 12, 33);
-  c.fill(30, WALK, 30, 34, WALK, 31, c.B.concrete);
-  for (const x of [31, 33]) { c.set(x, WALK + 1, 30, c.B.red); c.set(x, WALK + 2, 30, c.B.sea); }
-  c.fill(29, WALK + 4, 29, 35, WALK + 4, 32, c.V.frame);
-  for (const [x, z] of [[29, 29], [35, 29], [29, 32], [35, 32]]) c.fill(x, WALK, z, x, WALK + 3, z, c.B.blackstoneBricks);
+  // flush wash bay on the apron (drive-over) and the fuel island off to the east side
+  c.fill(3, WALK - 1, 29, 10, WALK - 1, 33, c.B.blueGlass);
+  hazardBorder(c, 3, WALK - 1, 29, 10, 33);
+  c.fill(43, WALK - 1, 14, 50, WALK - 1, 26, B.black);
+  c.fill(45, WALK, 18, 48, WALK, 21, c.B.concrete);
+  for (const x of [45, 48]) { c.warnLight(x, WALK + 1, 19); c.set(x, WALK + 1, 20, c.B.red); c.set(x, WALK + 2, 20, c.B.sea); }
+  c.fill(44, WALK + 5, 17, 49, WALK + 5, 22, c.V.frame);
+  for (const [x, z] of [[44, 17], [49, 17], [44, 22], [49, 22]]) c.fill(x, WALK, z, x, WALK + 4, z, c.B.blackstoneBricks);
 }
 
 export function buildArmyMedicalFacilityV2(dimension, origin, rotation, variantId) {
@@ -263,8 +288,8 @@ export function buildArmyMedicalFacilityV2(dimension, origin, rotation, variantI
   site(c, size, 16, 18, 21);
   const b = opsBuilding(c, {
     x1: 2, z1: 2, x2: 32, z2: 20, walk: WALK, floorH: 6, wall: c.B.white, frame: c.B.lightGrey,
-    floors: [[{ u1: 5, u2: 17, type: "medical" }, { u1: 19, u2: 31, type: "decon" }], [{ u1: 5, u2: 31, type: "medical" }]],
-    roofDeck: true, doorX: 17
+    floors: [[{ u1: 5, u2: 13, type: "lobby" }, { u1: 15, u2: 31, type: "medical" }], [{ u1: 5, u2: 18, type: "medical" }, { u1: 20, u2: 31, type: "decon" }]],
+    roofDeck: true, doorX: 17, wideStairs: true, partitions: true
   });
   // red-cross helipad on the roof
   c.fill(6, b.top - 1, 5, 28, b.top - 1, 17, c.B.white);
@@ -305,7 +330,7 @@ export function buildAirfieldOperationsBuildingV2(dimension, origin, rotation, v
   const b = opsBuilding(c, {
     x1: 2, z1: 2, x2: 32, z2: 19, walk: WALK, floorH: 6, glass: c.B.lightBlueGlass,
     floors: [[{ u1: 5, u2: 17, type: "briefing" }, { u1: 19, u2: 31, type: "office" }], [{ u1: 5, u2: 17, type: "command" }, { u1: 19, u2: 31, type: "comms" }]],
-    roofDeck: true, doorX: 17
+    roofDeck: true, doorX: 17, wideStairs: true
   });
   // fully glazed corner stair tower look on the east end
   for (let y = WALK; y < b.top; y++) for (let z = 4; z <= 17; z++) if (y % 6 !== 1) c.set(32, y, z, c.B.lightBlueGlass);
@@ -495,7 +520,7 @@ export function buildNavalHeadquartersV2(dimension, origin, rotation, variantId)
   navyBand(c, 12, 26, 24, WALK + 8);
   c.set(19, WALK + 8, 24, c.B.yellow);
   for (const x of [8, 30]) flagpole(c, x, 24, 10, [c.B.white, c.B.blue, c.B.red]);
-  latticeMast(c, { x: 31, z: 4, y1: b.top, y2: b.top + 5, width: 1 });
+  latticeMast(c, { x: 31, z: 4, y1: b.top, y2: b.top + 5, width: 1, classicBeacon: true }); // navy: unchanged until tested
 }
 
 // ---------------------------------------------------------------------------
@@ -508,7 +533,7 @@ export function buildHQAdministrationWingV2(dimension, origin, rotation, variant
   const b = opsBuilding(c, {
     x1: 2, z1: 2, x2: 38, z2: 15, walk: WALK, floorH: 6, glass: c.B.lightBlueGlass,
     floors: [[{ u1: 5, u2: 19, type: "lobby" }, { u1: 21, u2: 37, type: "office" }], [{ u1: 5, u2: 37, type: "office" }], [{ u1: 5, u2: 19, type: "conference" }, { u1: 21, u2: 37, type: "office" }]],
-    roofDeck: true, doorX: 20
+    roofDeck: true, doorX: 20, wideStairs: true
   });
   // covered walkway (colonnade) along the front linking to the HQ
   c.fill(2, WALK - 1, 16, 38, WALK - 1, 19, c.B.smooth);

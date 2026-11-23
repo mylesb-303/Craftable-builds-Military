@@ -3,12 +3,12 @@ import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { FULL_RUNWAY_SIZES, FULL_RUNWAY_SNAP } from "./structures/full_runways.js";
 import { CORE_SIZES } from "./structures/core_v2.js";
 import { MAP_ROOM_SIZE } from "./structures/map_room.js";
-import { ARMY_SIZES, HEAVY_HANGAR_ENVELOPE } from "./structures/army_v2.js";
+import { APRON_SIZES, APRON_SNAP, HELIPORT_QUAD_SIZE } from "./structures/aprons.js";
+import { ARMY_SIZES, HEAVY_HANGAR_ENVELOPE, PERIMETER_SNAP } from "./structures/army_v2.js";
 import { AIR_SIZES, AIR_ENVELOPES } from "./structures/air_v2.js";
 import { NAVY_SIZES } from "./structures/navy_v2.js";
 import { SUPER_HANGAR_SIZE, SUPER_HANGAR_ENVELOPE } from "./structures/super_hangar.js";
 import { STRATEGIC_SIZES } from "./structures/strategic_v2.js";
-import { BUNKER_SPECS, bunkerSize } from "./structures/bunkers.js";
 
 export const CATEGORIES = [
   { id: "core", name: "Core Base & HQ", icon: "§7■" },
@@ -16,10 +16,8 @@ export const CATEGORIES = [
   { id: "air_force", name: "Air Force", icon: "§b✈" },
   { id: "airfield", name: "Runways & Taxiways", icon: "§e═" },
   { id: "navy", name: "Navy", icon: "§9⚓" },
-  { id: "bunkers", name: "Bunkers", icon: "§5⬛" },
   { id: "strategic", name: "Strategic / Joint", icon: "§6◆" },
-  { id: "logistics", name: "Logistics & Support", icon: "§e▣" },
-  { id: "modular", name: "Modular Base", icon: "§8▦" }
+  { id: "logistics", name: "Logistics & Support", icon: "§e▣" }
 ];
 
 export const STRUCTURES = {
@@ -75,14 +73,44 @@ export const STRUCTURES = {
       size: AIRFIELD_SIZES.taxiway_corner, foundationDepth: 2, snap: AIRFIELD_SNAP.taxiway_corner
     },
     {
-      id: "aircraft_apron", name: "Aircraft Parking Apron",
-      description: "Three-stand apron with lit taxilane, curved lead-in lines, stop bars, safety boxes and floodlights.",
-      size: AIRFIELD_SIZES.aircraft_apron, foundationDepth: 2, snap: AIRFIELD_SNAP.aircraft_apron
+      id: "aircraft_apron", name: "Fighter Parking Apron",
+      description: "8 fighter stands (F-22, F-35, F/A-18, Typhoon, A-10) nose-in on both sides of a lit central taxilane, smooth curved lead-in lines, stop bars and clearance boxes. The front cross taxilane links off both ways. Snaps onto a taxiway.",
+      size: APRON_SIZES.aircraft_apron, foundationDepth: 2, snap: APRON_SNAP.aircraft_apron
+    },
+    {
+      id: "aircraft_apron_extension", name: "Fighter Apron Extension",
+      description: "4 more fighter stands each side, open at the joining end: snap onto the far end of a Fighter Apron (or another extension) to grow it in a straight line.",
+      size: APRON_SIZES.aircraft_apron_extension, foundationDepth: 2, snap: APRON_SNAP.aircraft_apron_extension
+    },
+    {
+      id: "apron_medium", name: "Transport Parking Apron",
+      description: "4 large stands (C-130/AC-130, KC-135, A400M, B-1B, KC-46, V-22) on both sides of a central taxilane, with curved lead-ins and a front cross lane linking both ways. Snaps onto a taxiway.",
+      size: APRON_SIZES.apron_medium, foundationDepth: 2, snap: APRON_SNAP.apron_medium
+    },
+    {
+      id: "apron_medium_extension", name: "Transport Apron Extension",
+      description: "2 more transport stands each side, open at the joining end: snaps onto the far end of a Transport Apron to extend it.",
+      size: APRON_SIZES.apron_medium_extension, foundationDepth: 2, snap: APRON_SNAP.apron_medium_extension
+    },
+    {
+      id: "apron_heavy", name: "Heavy / Bomber Parking Apron",
+      description: "4 heavy stands sized for the C-5M Galaxy, C-17, B-52H and B-2 on both sides of a wide central taxilane, with curved lead-ins and a front cross lane. Built in sections. Snaps onto a taxiway.",
+      size: APRON_SIZES.apron_heavy, foundationDepth: 2, snap: APRON_SNAP.apron_heavy
+    },
+    {
+      id: "apron_heavy_extension", name: "Heavy Apron Extension",
+      description: "2 more heavy stands each side, open at the joining end: snaps onto the far end of a Heavy Apron to extend it.",
+      size: APRON_SIZES.apron_heavy_extension, foundationDepth: 2, snap: APRON_SNAP.apron_heavy_extension
     },
     {
       id: "helicopter_apron", name: "Helicopter Apron (Heliport)",
       description: "Heliport with a 23 x 23 touchdown pad and H, FATO markings, aiming circle, green perimeter lights, windsock and refuelling point.",
       size: AIR_SIZES.helicopter_apron, foundationDepth: 2
+    },
+    {
+      id: "heliport_quad", name: "Four-Pad Heliport",
+      description: "Four Chinook-sized helipads (25 m touchdown pads with H, aiming circles, FATO edges and green lights) around a lit taxi cross, with a windsock and fuel point on the border.",
+      size: HELIPORT_QUAD_SIZE, foundationDepth: 2
     }
   ],
   core: [
@@ -105,16 +133,6 @@ export const STRUCTURES = {
       id: "hq_administration_wing", name: "HQ Administration Wing",
       description: "Formal two-storey office wing with colonnaded frontage, shared offices and monitoring stations.",
       size: FACILITY_SIZES.hq_administration_wing, foundationDepth: 2
-    },
-    {
-      id: "hq_command_rotunda", name: "HQ Command Rotunda",
-      description: "Domed circular command centre: situation room with a lit plot table and ring of consoles, screen wall, and ring offices behind tall windows.",
-      size: CORE_SIZES.hq_command_rotunda, foundationDepth: 2
-    },
-    {
-      id: "ceremonial_fountain_plaza", name: "Ceremonial Fountain Plaza",
-      description: "Parade plaza with a tiered working fountain, flag circle, benches, lit bollards, hedged gardens and a memorial plinth.",
-      size: CORE_SIZES.ceremonial_fountain_plaza, foundationDepth: 2
     },
     {
       id: "operations_map_room", name: "Operations Map Room",
@@ -154,19 +172,14 @@ export const STRUCTURES = {
       size: FACILITY_SIZES.army_medical_facility, foundationDepth: 2
     },
     {
-      id: "army_command_bunker", name: "Army Command Bunker",
-      description: "Low-profile reinforced bunker with operations room, briefing space, communications and secure records.",
-      size: FACILITY_SIZES.army_command_bunker, foundationDepth: 2
+      id: "army_perimeter_wall", name: "Perimeter Wall Section",
+      description: "21-block precast wall section, 4 thick with a hidden obsidian blast core, 3-wide walkway on top behind a crenellated parapet with built-in floodlights, and 2-wide steps up from the inside. Use Snap to chain sections in a perfect line.",
+      size: ARMY_SIZES.army_perimeter_wall, foundationDepth: 2, snap: PERIMETER_SNAP.army_perimeter_wall
     },
     {
-      id: "army_defensive_checkpoint", name: "Defensive Checkpoint",
-      description: "Road checkpoint with a serpentine chicane, covered search bay, boom barrier, two sandbag sangars with bunks and radios, and wire obstacles.",
-      size: ARMY_SIZES.army_defensive_checkpoint, foundationDepth: 2
-    },
-    {
-      id: "army_perimeter_wall", name: "Perimeter Wall Module",
-      description: "Modular precast T-wall section with a patrol step, buttress fins, razor wire, floodlights built into the coping and CCTV.",
-      size: ARMY_SIZES.army_perimeter_wall, foundationDepth: 2
+      id: "army_perimeter_corner_tower", name: "Perimeter Corner Watch Tower",
+      description: "Corner tower that turns the perimeter wall 90° (snap a right or left turn). Obsidian-cored walls, 2-wide stairs from the ground to the walkway and on to a lookout roof with searchlights and a warning light.",
+      size: ARMY_SIZES.army_perimeter_corner_tower, foundationDepth: 2, snap: PERIMETER_SNAP.army_perimeter_corner_tower
     }
   ],
   air_force: [
@@ -177,33 +190,28 @@ export const STRUCTURES = {
     },
     {
       id: "large_aircraft_hangar", name: "Heavy Aircraft Hangar",
-      description: "Clear-span transport hangar: 45-wide x 16-tall door for C-130J, KC-135 and A400M, rear workshops and a glazed mezzanine. Nothing stands in the aircraft area.",
+      description: "Clear-span transport hangar: 45-wide x 16-tall door for C-130J, KC-135 and A400M, rear workshops, an operations room with a full wall of item frames for your maps, and a glazed mezzanine. Nothing stands in the aircraft area.",
       size: AIR_SIZES.large_aircraft_hangar, foundationDepth: 2, envelope: AIR_ENVELOPES.large_aircraft_hangar
     },
     {
       id: "hardened_fighter_shelter", name: "Hardened Fighter Shelter",
-      description: "TAB-VEE style hardened shelter: steel-lined concrete arch for one fighter (up to A-10 span), lights built into the liner, rear exhaust port.",
+      description: "TAB-VEE style hardened shelter: long steel-lined concrete arch for one fighter (up to A-10 span, SR-71 length), lights built into the liner, solid lit centreline, rear exhaust port.",
       size: AIR_SIZES.hardened_fighter_shelter, foundationDepth: 2, envelope: AIR_ENVELOPES.hardened_fighter_shelter
     },
     {
-      id: "fighter_shelter_row", name: "Twin-Shelter Fighter Row",
-      description: "Two hardened fighter shelters with an earth-covered ready room (briefing room and bunks) between them.",
+      id: "fighter_shelter_row", name: "Two-Shelter Fighter Row",
+      description: "Two long hardened fighter shelters with a reinforced concrete ready room (briefing room and bunks) between them. Solid lit centrelines and flat floors.",
       size: AIR_SIZES.fighter_shelter_row, foundationDepth: 2, envelope: AIR_ENVELOPES.fighter_shelter_row
     },
     {
       id: "helicopter_hangar", name: "Helicopter Hangar",
-      description: "Two-helicopter hangar with a 37-wide clear door (Chinook, Apache, Osprey), rear workshop/avionics/crew rooms and a mezzanine store.",
+      description: "Two-Chinook hangar: 55-wide by 10-tall clear door and 44 m of clear depth (Chinook, Apache, Osprey, Ghost Hawk), rear workshop/avionics/crew rooms and a mezzanine store.",
       size: AIR_SIZES.helicopter_hangar, foundationDepth: 2, envelope: AIR_ENVELOPES.helicopter_hangar
     },
     {
       id: "airfield_operations_building", name: "Airfield Operations Building",
       description: "Flight-line dispatch, briefing and monitoring facility with server and console spaces.",
       size: FACILITY_SIZES.airfield_operations_building, foundationDepth: 2
-    },
-    {
-      id: "air_traffic_control_tower", name: "Air Traffic Control Tower",
-      description: "Compact furnished ATC tower with access core, operations cab, glazing and roof equipment.",
-      size: FACILITY_SIZES.air_traffic_control_tower, foundationDepth: 2
     },
     {
       id: "watch_tower", name: "Airbase Watch Tower",
@@ -308,28 +316,6 @@ export const STRUCTURES = {
       size: NAVY_SIZES.seawall_module, foundationDepth: 3, previewFloorY: 5, placementMode: "overlay"
     }
   ],
-  bunkers: [
-    {
-      id: "small_nuclear_bunker", name: "Small Nuclear Bunker",
-      description: "Deep compact four-person survival bunker with command post, stores, power, filtration and escape shaft inside an obsidian outer frame.",
-      ...bunkerSize(BUNKER_SPECS.small_nuclear_bunker), placementMode: "excavation"
-    },
-    {
-      id: "medium_nuclear_bunker", name: "Medium Nuclear Bunker",
-      description: "Deep twelve-person operational bunker with medical, barracks, command, storage, utilities and redundant escape access.",
-      ...bunkerSize(BUNKER_SPECS.medium_nuclear_bunker), placementMode: "excavation"
-    },
-    {
-      id: "large_nuclear_bunker", name: "Large Nuclear Bunker",
-      description: "Multi-level hardened bunker for roughly thirty occupants with operations, accommodation, medical and engineering floors.",
-      ...bunkerSize(BUNKER_SPECS.large_nuclear_bunker), placementMode: "excavation"
-    },
-    {
-      id: "strategic_operations_bunker", name: "Strategic Underground Operations Centre",
-      description: "Vast three-level joint command complex with situation room, coordination consoles, servers, medical, accommodation and redundant utilities.",
-      ...bunkerSize(BUNKER_SPECS.strategic_operations_bunker), placementMode: "excavation"
-    }
-  ],
   strategic: [
     {
       id: "small_tactical_radar_post", name: "Small Tactical Radar Post",
@@ -384,17 +370,10 @@ export const STRUCTURES = {
   ],
   logistics: [
     {
-      id: "logistics_hall", name: "Logistics & Armory Hall",
-      description: "High-capacity secure warehouse with tall storage racks, handling lane and inventory control desk.",
-      size: FACILITY_SIZES.logistics_hall, foundationDepth: 2
-    },
-    {
       id: "fuel_tank_farm", name: "Airbase Fuel Tank Farm",
       description: "Two aboveground fuel tanks inside a containment bund, pipe rack, pump house, covered truck fill stand with loading arm and fire monitor.",
       size: AIR_SIZES.fuel_tank_farm, foundationDepth: 2
     }
-  ],
-  modular: [
   ]
 };
 

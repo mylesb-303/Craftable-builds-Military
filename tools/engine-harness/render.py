@@ -29,6 +29,25 @@ if mode=="plan":
                     break
             dr.rectangle([x*S,z*S,x*S+S-1,z*S+S-1],fill=c or (0,0,0))
     img.save(out)
+elif mode=="elev":
+    side=sys.argv[4]  # south|north|east|west : the face you look at
+    horiz = W if side in ("south","north") else D
+    depth = D if side in ("south","north") else W
+    img=Image.new("RGB",(horiz*S,H*S),(150,190,230)); dr=ImageDraw.Draw(img)
+    skip={"minecraft:air","minecraft:stone","minecraft:dirt"}
+    for y in range(H):
+        for h in range(horiz):
+            c=None
+            for k in range(depth):
+                if side=="south": x,z=h,D-1-k
+                elif side=="north": x,z=W-1-h,k
+                elif side=="east": x,z=W-1-k,D-1-h
+                else: x,z=k,h
+                n=at(x,y,z)
+                if n in skip or n.endswith("light_block_15"): continue
+                c=colour(n); c=tuple(int(v*(1-min(k,12)*0.04)) for v in c); break
+            if c: dr.rectangle([h*S,(H-1-y)*S,h*S+S-1,(H-1-y)*S+S-1],fill=c)
+    img.save(out)
 else:
     # isometric cutaway: render all blocks except natural terrain (stone/dirt/grass) as cubes, painter's order
     cut = mode=="cut"

@@ -15,13 +15,24 @@ const WALK = 2;
 
 export const ARMY_SIZES = {
   army_defensive_checkpoint: { x: 19, y: 9, z: 13 },
-  army_perimeter_wall: { x: 21, y: 8, z: 5 },
+  army_perimeter_wall: { x: 21, y: 12, z: 9 },
+  army_perimeter_corner_tower: { x: 11, y: 18, z: 11 },
   heavy_vehicle_maintenance_hangar: { x: 35, y: 15, z: 27 }
 };
 
 // three drive-through vehicle lanes (x ranges) in the maintenance hall
 const HV_LANES = [[3, 11], [13, 21], [23, 31]];
 export const HEAVY_HANGAR_ENVELOPE = HV_LANES.map(([x1, x2]) => ({ x1: x1 + 1, x2: x2 - 1, y1: WALK, y2: WALK + 6, z1: 0, z2: 24 }));
+
+/**
+ * Perimeter wall snap connectors (v1.11). Straight sections chain end to end along local x;
+ * the corner tower turns the wall 90° — "out" turns right (clockwise run, outside on the left),
+ * "branch" turns left. All walkways line up at the same height and centreline.
+ */
+export const PERIMETER_SNAP = {
+  army_perimeter_wall: { family: "perimeter", in: { x: 0, z: 3, dir: "west" }, out: { x: 20, z: 3, dir: "east" } },
+  army_perimeter_corner_tower: { family: "perimeter", in: { x: 0, z: 3, dir: "west" }, out: { x: 7, z: 10, dir: "south" }, branch: { x: 3, z: 0, dir: "north" }, labels: { out: "Right Turn", branch: "Left Turn" } }
+};
 
 const ctx = (id, d, o, r, v) => ({ c: kit(d, o, r, ARMY_SIZES[id], v), size: ARMY_SIZES[id] });
 
@@ -87,43 +98,118 @@ export function buildArmyDefensiveCheckpoint(dimension, origin, rotation, varian
 }
 
 // ---------------------------------------------------------------------------
-// Army Perimeter Wall — precast T-wall segment with patrol step, wire and
-// floodlights set into the coping (modular: place end to end)
+// Army Perimeter Wall (v1.11) — 21-long section, 4 thick with a hidden obsidian
+// core, a 3-wide walkway on top behind a crenellated parapet, and a 2-wide stair
+// up from the ground on the inside. Local z 0 = outside, z 8 = inside.
 // ---------------------------------------------------------------------------
+const DECK = WALK + 5; // walkway floor block; you stand at DECK + 1
+
+/** Wall body across local x range x1..x2 (shared by the section and the tower stubs). */
+function wallRun(c, x1, x2) {
+  const B = c.B;
+  for (let x = x1; x <= x2; x++) {
+    const joint = x % 4 === 0;
+    c.set(x, WALK - 1, 0, c.P("minecraft:gravel"));
+    // outer face (z1) and inner face (z4) of precast panels; obsidian core (z2..3) hidden inside
+    for (let y = WALK - 1; y < DECK; y++) {
+      c.set(x, y, 1, joint ? B.tile : c.V.wall);
+      c.set(x, y, 2, B.obsidian); c.set(x, y, 3, B.obsidian);
+      c.set(x, y, 4, joint ? B.tile : c.V.wall);
+    }
+    // walkway deck z2..4 plus a ledge at z5, inner guard rail on the ledge
+    for (let z = 1; z <= 5; z++) c.set(x, DECK, z, z === 1 ? B.blackstoneBricks : c.V.floor);
+    c.set(x, DECK + 1, 5, B.rail);
+    // crenellated parapet on the outer face with floodlights set into it every 8 blocks
+    c.set(x, DECK + 1, 1, x % 8 === 4 ? B.sea : B.blackstoneBricks);
+    c.set(x, DECK + 2, 1, x % 2 === 0 ? B.blackstoneBricks : B.air);
+    // buttress fins under the ledge on the inside every 4 blocks
+    if (x % 4 === 2) c.fill(x, WALK, 5, x, DECK - 1, 5, B.tile);
+  }
+}
+
 export function buildArmyPerimeterWall(dimension, origin, rotation, variantId) {
   const { c, size } = ctx("army_perimeter_wall", dimension, origin, rotation, variantId);
   const B = c.B;
-  // z 0 = outside (ditch), z 1..2 = wall, z 3..4 = inside patrol step
   c.fill(0, WALK - 2, 0, size.x - 1, WALK - 2, size.z - 1, B.concrete);
-  c.fill(0, WALK - 1, 0, size.x - 1, WALK - 1, 0, c.P("minecraft:gravel"));
-  c.fill(0, WALK - 1, 1, size.x - 1, WALK - 1, size.z - 1, B.smooth);
-  for (let x = 0; x < size.x; x++) {
-    const joint = x % 4 === 0;
-    for (let y = WALK; y <= WALK + 3; y++) for (const z of [1, 2]) c.set(x, y, z, joint ? B.tile : c.V.wall);
-    // coping, with floodlights set into it facing outward every 4 panels
-    c.set(x, WALK + 4, 1, x % 8 === 2 ? B.sea : B.blackstoneBricks);
-    c.set(x, WALK + 4, 2, B.blackstoneBricks);
-    // razor-wire roll on top
-    c.set(x, WALK + 5, 1, x % 2 ? B.bars : c.P("minecraft:chain"));
-    // T-foot buttress fins on the inside
-    if (x % 4 === 2) c.fill(x, WALK, 3, x, WALK + 1, 3, B.tile);
+  c.fill(0, WALK - 1, 5, size.x - 1, WALK - 1, size.z - 1, B.smooth);
+  wallRun(c, 0, size.x - 1);
+  // 2-wide stair up from the ground on the inside (z 6..7), climbing east to a landing at x 8..9
+  for (let i = 0; i < 6; i++) {
+    for (const z of [6, 7]) {
+      c.fill(2 + i, WALK - 1, z, 2 + i, WALK + i - 1, z, B.concrete);
+      c.set(2 + i, WALK + i, z, c.stairs("minecraft:polished_deepslate_stairs", "east"));
+      c.clear(2 + i, WALK + i + 1, z, 2 + i, WALK + i + 3, z);
+    }
+    c.set(2 + i, WALK + i + 1, 8, B.rail); // outer handrail
   }
-  // raised patrol step behind the wall (slab walkway) with an embedded step light
-  for (let x = 0; x < size.x; x++) {
-    if (x % 4 === 2) { c.set(x, WALK + 2, 3, c.slabTop("minecraft:polished_deepslate_slab")); continue; }
-    c.set(x, WALK + 1, 3, B.concrete);
-    c.set(x, WALK + 2, 3, c.slabTop("minecraft:polished_deepslate_slab"));
+  c.fill(8, WALK - 1, 5, 9, DECK, 7, B.concrete);
+  c.fill(8, DECK, 5, 9, DECK, 7, c.V.floor);
+  for (const x of [8, 9]) c.set(x, DECK + 1, 5, B.air); // gap in the rail onto the walkway
+  for (let z = 6; z <= 8; z++) c.set(10, DECK + 1, z, B.rail);
+  c.set(8, DECK + 1, 8, B.rail); c.set(9, DECK + 1, 8, B.rail);
+  c.set(1, WALK - 1, 6, B.sea); c.set(1, WALK - 1, 7, B.sea); // step-off lights flush in the ground
+  // CCTV on a bracket at the centre of the parapet
+  c.set(14, DECK + 2, 1, B.blackstone);
+  c.set(14, DECK + 3, 1, c.P("minecraft:black_stained_glass_pane"));
+}
+
+/**
+ * Corner watch tower: 11×11, 2-thick walls (face + obsidian), 2-wide stairs from the ground to
+ * the walkway level and on up to a lookout roof. Walkway doors on the west (incoming wall),
+ * south (right turn) and north (left turn) faces.
+ */
+export function buildArmyPerimeterCornerTower(dimension, origin, rotation, variantId) {
+  const { c, size } = ctx("army_perimeter_corner_tower", dimension, origin, rotation, variantId);
+  const B = c.B;
+  const TOP = DECK + 6; // lookout roof floor block
+  c.fill(0, WALK - 2, 0, 10, WALK - 2, 10, B.concrete);
+  // shell: outer face ring, obsidian ring inside it
+  c.walls(0, WALK - 1, 0, 10, TOP, 10, c.V.wall);
+  c.walls(1, WALK - 1, 1, 9, TOP, 9, B.obsidian);
+  for (const [x, z] of [[0, 0], [10, 0], [0, 10], [10, 10]]) c.fill(x, WALK - 1, z, x, TOP + 1, z, B.blackstoneBricks);
+  c.fill(2, WALK - 1, 2, 8, WALK - 1, 8, c.V.floor);
+  c.clear(2, WALK, 2, 8, TOP - 1, 8);
+  // walkway-level floor and lookout roof
+  c.fill(2, DECK, 2, 8, DECK, 8, c.V.floor);
+  c.fill(0, TOP, 0, 10, TOP, 10, c.V.floor);
+  // ground door from inside the base (south face, west half) straight onto flight 1
+  c.clear(2, WALK, 9, 3, WALK + 2, 10);
+  c.set(1, WALK + 2, 10, B.sea); c.set(4, WALK + 2, 10, B.sea);
+  // flight 1: ground -> walkway, 2 wide (x 2..3) climbing north, landing at z 2
+  for (let i = 0; i < 6; i++) for (const x of [2, 3]) {
+    c.set(x, WALK + i, 8 - i, c.stairs("minecraft:polished_deepslate_stairs", "north"));
+    c.clear(x, WALK + i + 1, 8 - i, x, WALK + i + 3, 8 - i);
   }
-  // steps up to the patrol step at both ends
-  for (const [x0, dx, up] of [[0, 1, "east"], [size.x - 1, -1, "west"]]) {
-    c.set(x0, WALK, 4, c.stairs("minecraft:polished_deepslate_stairs", up));
-    c.set(x0 + dx, WALK, 4, B.concrete);
-    c.set(x0 + dx, WALK + 1, 4, c.stairs("minecraft:polished_deepslate_stairs", up));
+  for (let z = 4; z <= 6; z++) c.set(4, DECK + 1, z, B.rail); // guard the stairwell opening
+  // ground-floor store beside the stairs
+  for (let z = 3; z <= 7; z += 2) { c.set(8, WALK, z, c.barrel("west")); c.set(8, WALK + 1, z, c.barrel("west")); }
+  // flight 2: walkway -> roof, 2 wide (x 7..8) climbing south, landing at z 8 on the roof
+  for (let i = 0; i < 6; i++) for (const x of [7, 8]) {
+    c.set(x, DECK + 1 + i, 2 + i, c.stairs("minecraft:polished_deepslate_stairs", "south"));
+    c.clear(x, DECK + 2 + i, 2 + i, x, DECK + 4 + i, 2 + i);
   }
-  for (let x = 6; x < size.x - 2; x += 8) c.set(x, WALK, 4, B.sea); // kerb lights set into the step riser
-  // CCTV on a bracket at the centre
-  c.set(10, WALK + 5, 2, B.blackstone);
-  c.set(10, WALK + 6, 2, c.P("minecraft:black_stained_glass_pane"));
+  c.fill(7, TOP, 8, 8, TOP, 8, c.V.floor);
+  for (let z = 2; z <= 7; z++) c.set(6, TOP + 1, z, B.rail);
+  // walkway doors (3 wide, 3 tall) through both wall layers
+  c.clear(0, DECK + 1, 2, 1, DECK + 3, 4);   // west: incoming wall
+  c.clear(6, DECK + 1, 9, 8, DECK + 3, 10);  // south: right turn
+  c.clear(2, DECK + 1, 0, 4, DECK + 3, 1);   // north: left turn
+  for (const [x1, z1, x2, z2] of [[0, 2, 1, 4], [6, 9, 8, 10], [2, 0, 4, 1]]) c.fill(x1, DECK, z1, x2, DECK, z2, c.V.floor);
+  // firing slits at walkway level on the two outer faces
+  for (const k of [6, 8]) { c.set(k, DECK + 2, 0, B.air); c.set(10, DECK + 2, k - 4, B.air); }
+  // lights set into the ceilings
+  for (const [x, z] of [[5, 5], [5, 3], [5, 7]]) { c.set(x, DECK, z, B.sea); c.set(x, TOP, z, B.sea); }
+  c.set(5, WALK - 1, 5, B.sea);
+  // lookout: crenellated parapet, searchlights in the corners, warning light on a short mast
+  for (let i = 0; i <= 10; i++) for (const [x, z] of [[i, 0], [i, 10], [0, i], [10, i]]) {
+    c.set(x, TOP + 1, z, B.blackstoneBricks);
+    c.set(x, TOP + 2, z, i % 2 === 0 ? B.blackstoneBricks : B.air);
+  }
+  for (const [x, z] of [[1, 1], [9, 1], [1, 9], [9, 9]]) c.set(x, TOP + 1, z, B.sea);
+  c.fill(9, TOP + 1, 9, 9, TOP + 3, 9, B.bars);
+  c.warnLight(9, TOP + 4, 9);
+  // short wall stubs so the walkways meet the tower faces cleanly
+  void size;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,8 +259,8 @@ export function buildHeavyVehicleMaintenanceHangar(dimension, origin, rotation, 
     for (let k = 0; k < 3; k++) { c.set(mx, WALK - 3 + k, 17 + k, c.stairs("minecraft:polished_deepslate_stairs", "south")); }
     for (let x = mx - 1; x <= mx + 1; x++) c.set(x, WALK - 1, 6, B.yellow);
   }
-  // lane 3: wash bay with a floor drain grid
-  for (let z = 4; z <= 20; z += 2) for (let x = 25; x <= 29; x += 2) c.set(x, WALK - 1, z, B.ironTrapdoor);
+  // lane 3: wash bay — flat floor with flush drain channels (no trapdoors: vehicles roll straight over)
+  for (let z = 4; z <= 20; z += 4) for (let x = 24; x <= 30; x++) c.set(x, WALK - 1, z, B.grey);
   // overhead gantry crane across the hall on rails along the side walls (well above vehicle height)
   for (let z = Z1 + 1; z < Z2; z++) { c.set(X1 + 1, WALK + 8, z, B.yellow); c.set(X2 - 1, WALK + 8, z, B.yellow); }
   for (let x = X1 + 1; x <= X2 - 1; x++) c.set(x, WALK + 8, 12, B.yellow);

@@ -125,7 +125,14 @@ export function compileBuild(realDimension, buildFn, bounds, clip = false) {
       const z1 = Math.min(a.z, b.z), z2 = Math.max(a.z, b.z);
       for (let y = y1; y <= y2; y++) for (let z = z1; z <= z2; z++) for (let x = x1; x <= x2; x++) write(x, y, z, permutation);
     },
-    write
+    write,
+    /** typeId already compiled at a world cell (null = untouched terrain / outside). */
+    read(x, y, z) {
+      const lx = x - min.x, ly = y - min.y, lz = z - min.z;
+      if (lx < 0 || ly < 0 || lz < 0 || lx >= W || ly >= H || lz >= D) return null;
+      const id = grid[(ly * D + lz) * W + lx];
+      return id ? palette.list[id].type.id : null;
+    }
   };
   buildFn(recorder);
   return { min, W, H, D, grid, palette, attach, overflow };
@@ -273,18 +280,49 @@ function* applyListJob(dimension, entries) {
   return failed;
 }
 
-function runJobAsync(generator) {
+/**
+ * Runs a generator as a job. `onStep(n)` is called every 16 resumptions (progress),
+ * and when `maxTicks` is set a watchdog cancels a job that has not finished in time
+ * (so a slow planning pass on a busy device can never freeze a build).
+ */
+function runJobAsync(generator, onStep, maxTicks = 0) {
   return new Promise((resolve, reject) => {
+    let done = false, jobId, watch;
+    const finish = (fn, v) => {
+      if (done) return;
+      done = true;
+      if (watch !== undefined) system.clearRun(watch);
+      fn(v);
+    };
     function* wrapper() {
       try {
-        resolve(yield* generator);
+        let n = 0, r = generator.next();
+        while (!r.done) {
+          if (onStep && ++n % 16 === 0) onStep(n);
+          yield;
+          if (done) return;
+          r = generator.next();
+        }
+        finish(resolve, r.value);
       } catch (error) {
-        reject(error);
+        finish(reject, error);
       }
     }
-    system.runJob(wrapper());
+    jobId = system.runJob(wrapper());
+    if (maxTicks > 0) {
+      const start = system.currentTick ?? 0;
+      watch = system.runInterval(() => {
+        if ((system.currentTick ?? 0) - start < maxTicks) return;
+        try { system.clearJob(jobId); } catch { /* already finished */ }
+        finish(reject, new Error(`timed out after ${maxTicks} ticks`));
+      }, 20);
+    }
   });
 }
+
+/** Rough number of generator steps a planning pass takes for a grid (for the progress bar). */
+const PASS_STEPS = { access: 1 / 900, fixtures: 1 / 1024, light: 1 / 450 };
+const PASS_MAX_TICKS = 20 * 240; // 4 minutes: skip the pass rather than stall the build
 
 /**
  * Full staged construction.
@@ -300,8 +338,10 @@ export async function constructStaged(dimension, buildFn, onProgress, bounds, po
   const reports = {};
   for (const [name, pass] of post) {
     try {
-      onProgress?.(name === "access" ? "Checking access" : "Planning lighting", 0);
-      reports[name] = await runJobAsync(pass(compiled));
+      const label = name === "access" ? "Checking access" : name === "fixtures" ? "Fitting lights" : "Planning lighting";
+      const est = Math.max(16, compiled.W * compiled.H * compiled.D * (PASS_STEPS[name] ?? 1 / 600));
+      onProgress?.(label, 0);
+      reports[name] = await runJobAsync(pass(compiled), (n) => onProgress?.(label, Math.min(0.99, n / est)), PASS_MAX_TICKS);
     } catch (error) {
       console.warn(`[CAVIRA] ${name} pass skipped: ${error}`);
     }

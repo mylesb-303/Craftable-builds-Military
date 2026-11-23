@@ -64,10 +64,8 @@ jobs:
           grep -q "MAPROOM PASS" maproom.txt
           node passes.mjs | tee passes.txt
           ! awk '{split($0,a,"dark -> "); split(a[2],b," "); if (b[1]!="0" && $0 !~ /overlay/) bad=1} END{exit !bad}' passes.txt
-          for b in small_nuclear_bunker medium_nuclear_bunker large_nuclear_bunker strategic_operations_bunker; do
-            node inspect.mjs $b | tee walk.txt
-            grep -q "FLOORS OK" walk.txt
-          done
+          node wallcheck.mjs | tee wall.txt
+          grep -q "WALL PASS" wall.txt
 
       - name: Build mcaddon
         run: |
@@ -75,7 +73,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.10.0_Map_Room.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.11.0_Feedback_Fixes.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -88,5 +86,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.7.0-Lighting-Access-Previews
-          path: dist/Cavira_Craftable_Builds_1.10.0_Map_Room.mcaddon
+          name: Cavira-Craftable-Builds-1.11.0-Feedback-Fixes
+          path: dist/Cavira_Craftable_Builds_1.11.0_Feedback_Fixes.mcaddon

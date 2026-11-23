@@ -98,7 +98,8 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
     const xa = side === "west" ? 2 : 72;
     const xb = side === "west" ? 8 : 78;
     const openX = side === "west" ? 9 : 71; // bay fronts: the edge of the aircraft envelope
-    const galleryX = side === "west" ? 8 : 72; // upper walkway runs inside the bays
+    const galleryX = side === "west" ? 8 : 72; // upper walkway runs inside the bays (2 wide: galleryX and gallery2)
+    const gallery2 = side === "west" ? 7 : 73;
     for (let i = 0; i < 9; i++) {
       const z1 = 14 + i * 9;
       const z2 = z1 + 7;
@@ -114,29 +115,32 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
         if (level === 0) for (let z = z1; z <= z2; z++) c.set(openX, w + 5, z, (z - z1) % 4 === 1 ? B.sea : B.yellow);
         if (level === 1) {
           // gallery: doorways through the partitions keep the upper walkway continuous
-          for (const z of [z1 - 1, z2 + 1]) c.clear(galleryX, w, z, galleryX, w + 1, z);
+          for (const z of [z1 - 1, z2 + 1]) c.clear(Math.min(galleryX, gallery2), w, z, Math.max(galleryX, gallery2), w + 2, z);
           for (let z = z1 - 1; z <= z2 + 1; z++) c.set(openX, w, z, z % 6 === 0 ? B.yellow : B.rail);
         }
+        // furniture stays behind the 2-wide walkway along the bay front (both levels)
         furnishRoom(c, {
-          x1: xa, z1, x2: xb, z2, walk: w, h: 5,
+          x1: side === "west" ? xa : xa + 2, z1, x2: side === "west" ? xb - 2 : xb, z2, walk: w, h: 5,
           type: bayTypes[(i + level * 4) % bayTypes.length],
           door: side === "west" ? "east" : "west",
           doorU: 3
         });
       }
     }
-    // stair up to the gallery at the rear of each bay row (behind the aircraft parking box)
-    const sx = side === "west" ? 10 : 70;
-    for (let k = 0; k < 6; k++) {
-      c.set(sx, WALK + k, 18 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
-      c.fill(sx, WALK - 1, 18 - k, sx, WALK + k - 1, 18 - k, B.concrete);
+    // 2-wide stair up to the gallery at the rear of each bay row (behind the aircraft parking box)
+    const sx = side === "west" ? 10 : 69; // stair columns sx, sx + 1
+    for (let k = 0; k < 6; k++) for (const x of [sx, sx + 1]) {
+      c.set(x, WALK + k, 18 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
+      c.fill(x, WALK - 1, 18 - k, x, WALK + k - 1, 18 - k, B.concrete);
+      c.clear(x, WALK + k + 1, 18 - k, x, WALK + k + 3, 18 - k);
     }
-    // landing that joins the stair to the first upper bay's gallery
-    c.fill(Math.min(sx, galleryX), WALK + 5, 11, Math.max(sx, galleryX), WALK + 5, 12, B.andesite);
-    c.fill(sx, WALK + 5, 11, sx, WALK + 5, 13, B.andesite);
-    c.clear(galleryX, WALK + 6, 12, galleryX, WALK + 7, 13);
-    c.set(side === "west" ? 11 : 69, WALK + 6, 11, B.rail);
-    c.set(side === "west" ? 11 : 69, WALK + 6, 12, B.rail);
+    // landing beyond the top step that joins the stair to the gallery (top step itself is kept)
+    const lx1 = Math.min(sx, gallery2), lx2 = Math.max(sx + 1, galleryX);
+    c.fill(lx1, WALK + 5, 11, lx2, WALK + 5, 12, B.andesite);
+    c.clear(lx1, WALK + 6, 11, lx2, WALK + 8, 12);
+    c.clear(Math.min(galleryX, gallery2), WALK + 6, 13, Math.max(galleryX, gallery2), WALK + 8, 13);
+    for (let x = lx1; x <= lx2; x++) c.set(x, WALK + 6, 10, B.rail);
+    for (const z of [11, 12]) c.set(side === "west" ? lx2 + 1 : lx1 - 1, WALK + 6, z, B.rail);
     // personnel door in the side wall near the rear corner, with lights set into the wall
     const wallX = side === "west" ? 0 : 80;
     c.clear(wallX, WALK, 3, wallX, WALK + 2, 4);
@@ -172,17 +176,17 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
   c.clear(39, WALK, 13, 41, WALK + 2, 13);
   furnishRoom(c, { x1: 34, z1: 2, x2: 46, z2: 12, walk: WALK, h: 4, type: "briefing", door: "south", doorU: 5 });
   furnishRoom(c, { x1: 34, z1: 2, x2: 46, z2: 12, walk: WALK + 6, h: 5, type: "command", door: "south", doorU: 5 });
-  // stair up to the control room (inside, along the east wall)
-  for (let k = 0; k < 6; k++) {
-    c.set(46, WALK + k, 11 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
-    c.clear(46, WALK + k + 1, 11 - k, 46, WALK + k + 3, 11 - k);
+  // 2-wide stair up to the control room (inside, along the east wall); the top step is kept
+  for (let k = 0; k < 6; k++) for (const x of [45, 46]) {
+    c.set(x, WALK + k, 11 - k, c.stairs("minecraft:polished_deepslate_stairs", "north"));
+    c.clear(x, WALK + k + 1, 11 - k, x, WALK + k + 3, 11 - k);
   }
-  c.clear(46, WALK + 5, 6, 46, WALK + 5, 11);
+  for (let z = 7; z <= 11; z++) c.set(44, WALK + 6, z, B.rail); // guard the stairwell edge upstairs
   // control-room sign band
   for (let x = 36; x <= 44; x++) c.set(x, WALK + 11, 13, x % 2 ? B.green : B.black);
 
   // --- floor markings ---------------------------------------------------------
-  for (let z = 14; z <= frontZ; z++) if (z % 4 !== 3) c.set(CX, WALK - 1, z, B.yellow);
+  for (let z = 14; z <= frontZ; z++) c.set(CX, WALK - 1, z, B.yellow); // solid centreline
   // aircraft envelope outline (light blue): 61 wide between the bay fronts
   const E = SUPER_HANGAR_ENVELOPE;
   for (let x = E.x1; x <= E.x2; x++) { c.set(x, WALK - 1, E.z1, B.lightBlue); }
@@ -196,7 +200,7 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
   // suspended high-bay pendants: 3×3 lamp heads in a dark housing, hung on chains from the
   // trusses, kept above the door height so nothing reaches into the aircraft envelope
   const HEAD = SUPER_HANGAR_ENVELOPE.y2 + 2;
-  for (const px of [16, 28, 40, 52, 64]) for (const pz of [24, 40, 56, 72, 88]) {
+  for (const px of [16, 28, 40, 52, 64]) for (const pz of [6, 15, 24, 40, 56, 72, 88]) {
     const top = roofY(px) - 2; // underside of the truss
     if (top < HEAD + 2) continue;
     for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
@@ -223,7 +227,7 @@ export function buildSuperHeavyAircraftHangar(dimension, origin, rotation, varia
   // --- apron --------------------------------------------------------------
   c.fill(0, WALK - 1, LEN, 80, WALK - 1, size.z - 1, B.black);
   for (let z = LEN; z < size.z; z++) {
-    if (z % 4 !== 3) c.set(CX, WALK - 1, z, B.yellow);
+    c.set(CX, WALK - 1, z, B.yellow);
     c.set(4, WALK - 1, z, B.white);
     c.set(76, WALK - 1, z, B.white);
   }

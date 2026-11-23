@@ -20,6 +20,7 @@ import { sectionPlan, sectionBounds } from "./sections.js";
 import { compileHologramSource, modelHologram, startHologram } from "./hologram.js";
 import { installRunwayLights, registerRunwayLights } from "./runway_lights.js";
 import { scanTerrain } from "./terrain_scan.js";
+import { buildApron, buildHeliportQuad } from "./structures/aprons.js";
 import { buildOperationsMapRoom } from "./structures/map_room.js";
 import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
@@ -37,7 +38,7 @@ import { buildHQAdministrationWing, buildOfficersQuarters, buildLogisticsHall } 
 import { buildAirfieldOperationsBuilding } from "./structures/airforce_expansion.js";
 import { buildRunwayStraightV2, buildRunwayTouchdownZone, buildRunwayThresholdV2, buildRunwayTaxiwayJunction, buildTaxiwayStraightV2, buildTaxiwayHoldingPoint, buildTaxiwayCornerV2, buildAircraftApronV2, normaliseDesignator } from "./structures/airfield.js";
 import { buildGuardPost, buildMainSecurityGate, buildBaseHeadquarters, buildHQCommandRotunda, buildCeremonialFountainPlaza } from "./structures/core_v2.js";
-import { buildArmyDefensiveCheckpoint, buildArmyPerimeterWall, buildHeavyVehicleMaintenanceHangar } from "./structures/army_v2.js";
+import { buildArmyDefensiveCheckpoint, buildArmyPerimeterWall, buildArmyPerimeterCornerTower, buildHeavyVehicleMaintenanceHangar } from "./structures/army_v2.js";
 import { buildLargeAircraftHangar, buildWatchTower, buildHelicopterApron, buildHelicopterHangar, buildHardenedFighterShelter, buildFighterShelterRow, buildRadarRadomeFacility, buildFuelTankFarm } from "./structures/air_v2.js";
 import { buildPierStraight, buildPierCorner, buildPierTJunction, buildHeavyShipBerth, buildSubmarineServiceBerth, buildNavalFuelingPier, buildDryDockSide, buildDryDockGateEnd, buildNuclearSubmarinePen, buildDocksideLoadingCrane, buildCoastalDefenceBunker, buildSeawallModule } from "./structures/navy_v2.js";
 import { buildRunwayFullShort, buildRunwayFullMedium, buildRunwayFullLong } from "./structures/full_runways.js";
@@ -388,6 +389,8 @@ export function computeSnap(last, structure, connectorName) {
   if (!last || !mine) return undefined;
   const from = last.structure.snap?.[connectorName];
   if (!from) return undefined;
+  // pieces only snap within their own family (runway/taxiway pieces vs. perimeter wall)
+  if ((last.structure.snap.family ?? "airfield") !== (mine.family ?? "airfield")) return undefined;
   // world cell just beyond the previous piece's connector, and the direction it faces
   const p = toWorldLocation(last.origin, { x: from.x, y: 0, z: from.z }, last.structure.size, last.rotation);
   const face = worldDir(from.dir, last.rotation);
@@ -407,7 +410,7 @@ export function computeSnap(last, structure, connectorName) {
 async function applySnap(player, session, connectorName) {
   const snap = snapTarget(player, session, connectorName);
   if (!snap) {
-    tell(player, "§eNothing to snap to — build a runway, taxiway or apron piece first.");
+    tell(player, "§eNothing to snap to — build a matching piece (runway, taxiway, apron or perimeter wall) first.");
     return;
   }
   removePreviewBlocks(player.id, session);
@@ -457,6 +460,7 @@ async function showPreviewControls(player) {
   const last = LAST_PIECE.get(player.id);
   const canSnap = !!(session.structure.snap && last);
   const canBranch = !!(canSnap && last.structure.snap?.branch);
+  const snapLabels = last?.structure.snap?.labels ?? {};
   const designator = session.options?.designator ? `\nRunway: ${session.options.designator}` : "";
   const following = Boolean(session.follow);
   const lod = session.holoLod > 1 ? ` (shown at 1:${session.holoLod} detail)` : "";
@@ -477,13 +481,13 @@ async function showPreviewControls(player) {
   add("§aConstruct Here", async () => { if (await locked()) await constructPreview(player, session); });
   add("§6Try It Full Size\n§7Build it for real, then keep or remove", async () => { if (await locked()) await constructPreview(player, session, true); });
   const snapAction = (connector) => async () => {
-    if (!snapTarget(player, session, connector)) return tell(player, "§eNothing to snap to — build a runway, taxiway or apron piece first.");
+    if (!snapTarget(player, session, connector)) return tell(player, "§eNothing to snap to — build a matching piece (runway, taxiway, apron or perimeter wall) first.");
     session.follow = false;
     stopFollowOnly(session);
     await applySnap(player, session, connector);
   };
-  if (canSnap) add(`§dSnap to End of ${last.structure.name}`, snapAction("out"));
-  if (canBranch) add(`§dSnap to Taxiway Exit of ${last.structure.name}`, snapAction("branch"));
+  if (canSnap) add(`§dSnap ${snapLabels.out ? `${snapLabels.out} at` : "to End of"} ${last.structure.name}`, snapAction("out"));
+  if (canBranch) add(`§dSnap ${snapLabels.branch ? `${snapLabels.branch} at` : "to Taxiway Exit of"} ${last.structure.name}`, snapAction("branch"));
   if (!following) {
     add("§bMove With My View\n§7Unlock and line it up again", () => {
       unlockPreview(player, session);
@@ -724,6 +728,9 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
     case "army_perimeter_wall":
       buildArmyPerimeterWall(dimension, origin, rotation, variantId);
       break;
+    case "army_perimeter_corner_tower":
+      buildArmyPerimeterCornerTower(dimension, origin, rotation, variantId);
+      break;
     case "officers_quarters":
       buildOfficersQuartersV2(dimension, origin, rotation, variantId);
       break;
@@ -818,7 +825,15 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
       buildTaxiwayCornerV2(dimension, origin, rotation, variantId);
       break;
     case "aircraft_apron":
-      buildAircraftApronV2(dimension, origin, rotation, variantId);
+    case "aircraft_apron_extension":
+    case "apron_medium":
+    case "apron_medium_extension":
+    case "apron_heavy":
+    case "apron_heavy_extension":
+      buildApron(structureId, dimension, origin, rotation, variantId);
+      break;
+    case "heliport_quad":
+      buildHeliportQuad(dimension, origin, rotation, variantId);
       break;
     case "helicopter_apron":
       buildHelicopterApron(dimension, origin, rotation, variantId);

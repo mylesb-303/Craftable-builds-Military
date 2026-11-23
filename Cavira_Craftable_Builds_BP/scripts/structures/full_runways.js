@@ -98,6 +98,31 @@ function rectDist(px, pz, x1, z1, x2, z2) {
   const dz = Math.max(z1 - pz, 0, pz - z2);
   return Math.hypot(dx, dz);
 }
+/** Cubic Bézier sampled into a polyline (v1.11: smooth lead-in/lead-off curves). */
+function bezier(p0, p1, p2, p3, n = 24) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, u = 1 - t;
+    pts.push([u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]);
+  }
+  return pts;
+}
+/** S-curve between two parallel headings along z: starts at a heading along z, ends at b heading along z. */
+function sCurve(ax, az, bx, bz, n) {
+  const mz = (az + bz) / 2;
+  return bezier([ax, az], [ax, mz], [bx, mz], [bx, bz], n);
+}
+/** Quarter arc from (ax, az) heading along x to (bx, bz) heading along z. */
+function quarterArc(ax, az, bx, bz, n = 16) {
+  const k = 0.5523; // circle approximation
+  return bezier([ax, az], [ax + (bx - ax) * k, az], [bx, bz + (az - bz) * k], [bx, bz], n);
+}
+function polyDist(px, pz, pts) {
+  let d = Infinity;
+  for (let i = 1; i < pts.length; i++) d = Math.min(d, segDist(px, pz, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]));
+  return d;
+}
+
 /** Polynomial smooth minimum — gives taxiway junctions rounded fillets. */
 function smin(a, b, k) {
   const h = Math.max(k - Math.abs(a - b), 0) / k;
@@ -123,10 +148,15 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
   ];
   const nStart = Math.round(thrN + runLen * 0.45);
   const sStart = Math.round(thrN + runLen * 0.55);
+  // rapid exits as smooth S-curves from the runway centreline onto the parallel taxiway
   const rets = [
-    [RC, sStart, TCX, sStart + dz], // landing southbound (from the north end)
-    [RC, nStart, TCX, nStart - dz]  // landing northbound (from the south end)
+    sCurve(RC, sStart, TCX, sStart + dz, 20), // landing southbound (from the north end)
+    sCurve(RC, nStart, TCX, nStart - dz, 20)  // landing northbound (from the south end)
   ];
+  const retBox = rets.map((pts) => {
+    const xs = pts.map((p) => p[0]), zs = pts.map((p) => p[1]), m = HALF_T + 8;
+    return [Math.min(...xs) - m, Math.min(...zs) - m, Math.max(...xs) + m, Math.max(...zs) + m];
+  });
   const bayX1 = TCX, bayX2 = TCX + HALF_T + s.bayW;
   const bays = [
     [bayX1, zN - HALF_T, bayX2, zN + s.bayLen],
@@ -135,7 +165,10 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
   const taxiDist = (x, z) => {
     let d = Infinity;
     for (const g of segs) d = smin(d, segDist(x, z, ...g), 6);
-    for (const g of rets) d = smin(d, segDist(x, z, ...g), 5);
+    rets.forEach((pts, i) => {
+      const [x1, z1, x2, z2] = retBox[i];
+      if (x >= x1 && x <= x2 && z >= z1 && z <= z2) d = smin(d, polyDist(x, z, pts), 5);
+    });
     for (const b of bays) d = smin(d, rectDist(x, z, ...b) + HALF_T - 2, 4);
     return d;
   };
@@ -261,17 +294,42 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
       c.set(x, SY, z, step++ % every === Math.floor(every / 2) ? lightBlock : c.B.yellow);
     }
   };
-  paintLine(TCX, zN, TCX, zS, c.B.sea);
-  paintLine(TCX, zMid, size.x - 1, zMid, c.B.sea);
-  for (const z of [zN, zS]) paintLine(RC, z, TCX, z, c.B.sea, 10, true);
-  // rapid-exit lead-off lines start on the runway centreline with green lights
-  for (const g of rets) paintLine(...g, c.P("minecraft:verdant_froglight"), 6, true);
-  // holding-bay lead-in loops
+  /** paint a sampled curve, dropping duplicate cells, lights every `every` cells */
+  const paintPath = (pts, lightBlock, every = 10, onRunway = false) => {
+    let step = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) * 2));
+      for (let j = i === 1 ? 0 : 1; j <= n; j++) {
+        const x = Math.round(ax + ((bx - ax) * j) / n), z = Math.round(az + ((bz - az) * j) / n);
+        const key = `${x},${z}`;
+        if (paintPath.seen.has(key)) continue;
+        paintPath.seen.add(key);
+        if (x >= rwX1 && x <= rwX2 && !onRunway) continue;
+        c.set(x, SY, z, step++ % every === Math.floor(every / 2) ? lightBlock : c.B.yellow);
+      }
+    }
+  };
+  paintPath.seen = new Set();
+  // connector -> parallel taxiway turns are smooth quarter arcs (radius 18) instead of square corners
+  const RT = 18;
+  paintLine(TCX, zN + RT, TCX, zS - RT, c.B.sea);
+  paintLine(TCX + 1, zMid, size.x - 1, zMid, c.B.sea);
+  paintLine(RC, zN, TCX - RT, zN, c.B.sea, 10, true);
+  paintLine(RC, zS, TCX - RT, zS, c.B.sea, 10, true);
+  paintPath(quarterArc(TCX - RT, zN, TCX, zN + RT), c.B.sea);
+  paintPath(quarterArc(TCX - RT, zS, TCX, zS - RT), c.B.sea);
+  // apron link leaves the parallel taxiway on two smooth curves (both directions)
+  paintPath(bezier([TCX, zMid - RT], [TCX, zMid - RT * 0.45], [TCX + RT * 0.45, zMid], [TCX + RT, zMid]), c.B.sea);
+  paintPath(bezier([TCX, zMid + RT], [TCX, zMid + RT * 0.45], [TCX + RT * 0.45, zMid], [TCX + RT, zMid]), c.B.sea);
+  // rapid-exit lead-off curves start on the runway centreline with green lights
+  for (const pts of rets) paintPath(pts, c.P("minecraft:verdant_froglight"), 6, true);
+  // holding-bay lead-in curves
   const bayC = Math.round((TCX + HALF_T + 1 + bayX2) / 2);
-  paintLine(TCX, zN + s.bayLen + 6, bayC, zN + s.bayLen - 6, c.B.sea);
-  paintLine(bayC, zN + s.bayLen - 6, bayC, zN + 4, c.B.sea);
-  paintLine(TCX, zS - s.bayLen - 6, bayC, zS - s.bayLen + 6, c.B.sea);
-  paintLine(bayC, zS - s.bayLen + 6, bayC, zS - 4, c.B.sea);
+  paintPath(sCurve(TCX, zN + s.bayLen + 8, bayC, zN + s.bayLen - 10), c.B.sea);
+  paintLine(bayC, zN + s.bayLen - 10, bayC, zN + 4, c.B.sea);
+  paintPath(sCurve(TCX, zS - s.bayLen - 8, bayC, zS - s.bayLen + 10), c.B.sea);
+  paintLine(bayC, zS - s.bayLen + 10, bayC, zS - 4, c.B.sea);
   for (const [z1, z2] of [[zN + 2, zN + s.bayLen - 4], [zS - s.bayLen + 4, zS - 2]]) {
     for (let z = z1; z <= z2; z += 3) { c.set(bayX2 - 2, SY, z, c.B.white); c.set(bayC + 6, SY, z, c.B.white); }
   }
@@ -285,11 +343,10 @@ export function buildFullRunway(id, dimension, origin, rotation, variantId, opti
       c.set(holdX + 4, SY, z, c.B.yellow);
       c.set(holdX + 7, SY, z, z % 2 ? c.P("minecraft:redstone_block") : c.B.red);
     }
-    // mandatory sign: red board with a white bar, on the shoulder outside the connector
-    for (const zSign of [zc - HALF_T - 2, zc + HALF_T + 2]) {
-      c.fill(holdX + 4, SY + 1, zSign, holdX + 4, SY + 2, zSign, c.B.blackstoneBricks);
-      c.fill(holdX + 3, SY + 3, zSign, holdX + 5, SY + 4, zSign, c.B.red);
-      c.set(holdX + 4, SY + 3, zSign, c.B.white);
+    // mandatory instruction marking painted flat on the surface either side of the centreline
+    // (v1.11: no standing sign boards — nothing here can clip a wingtip)
+    for (const side of [-1, 1]) for (let dx = 0; dx <= 2; dx++) for (let k = 2; k <= 7; k++) {
+      c.set(holdX + 9 + dx, SY, zc + side * k, dx === 1 && k >= 3 && k <= 6 ? c.B.white : c.B.red);
     }
   }
   // ILS-critical-area style marking where the taxiway joins the apron link

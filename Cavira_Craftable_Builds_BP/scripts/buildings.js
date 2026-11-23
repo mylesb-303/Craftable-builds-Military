@@ -5,14 +5,21 @@ import { furnishRoom } from "./interiors.js";
 // Shared above-ground building components (v1.5.0)
 // ---------------------------------------------------------------------------
 
-/** Straight internal stair flight rising from `walk` by `rise`, climbing toward `up`. */
-export function stairFlight(c, x, z, up, walk, rise, stairId = "minecraft:polished_deepslate_stairs") {
+/**
+ * Straight internal stair flight rising from `walk` by `rise`, climbing toward `up`.
+ * `width` columns wide; extra columns extend toward local direction `widen`
+ * (default: to the right of the climb direction).
+ */
+export function stairFlight(c, x, z, up, walk, rise, stairId = "minecraft:polished_deepslate_stairs", width = 1, widen) {
   const d = DIRS[up];
+  const w = DIRS[widen ?? { north: "east", east: "south", south: "west", west: "north" }[up]];
   for (let i = 0; i < rise; i++) {
-    const sx = x + d.x * i;
-    const sz = z + d.z * i;
-    c.set(sx, walk + i, sz, c.stairs(stairId, up));
-    c.clear(sx, walk + i + 1, sz, sx, walk + i + 3, sz);
+    for (let k = 0; k < width; k++) {
+      const sx = x + d.x * i + w.x * k;
+      const sz = z + d.z * i + w.z * k;
+      c.set(sx, walk + i, sz, c.stairs(stairId, up));
+      c.clear(sx, walk + i + 1, sz, sx, walk + i + 3, sz);
+    }
   }
   // landing beyond the last step
   return { x: x + d.x * rise, z: z + d.z * rise };
@@ -52,29 +59,47 @@ export function opsBuilding(c, o) {
   c.set(doorX - 2, walk + 2, z2 + 1, c.B.sea);
   c.set(doorX + 2, walk + 2, z2 + 1, c.B.sea);
   c.fill(doorX - 1, walk - 1, z2 + 1, doorX + 1, walk - 1, z2 + 2, c.B.andesite);
-  // internal switchback stairs in the west aisle (columns x1+1 / x1+2):
-  // even flights climb north in x1+1, odd flights climb south in x1+2, so each
-  // landing sits right beside the start of the next flight.
+  // internal switchback stairs in the west aisle.
+  // narrow (legacy): even flights climb north in x1+1, odd flights climb south in x1+2.
+  // wide (o.wideStairs, v1.11): 2-wide flights — even north in x1+1..2, odd south in x1+3..4,
+  // with full-width landings at both ends.
+  const wide = !!o.wideStairs;
   const flights = n - 1 + (o.roofDeck ? 1 : 0);
   for (let k = 0; k < flights; k++) {
     const w = walk + fh * k;
     const north = k % 2 === 0;
-    const sx = x1 + (north ? 1 : 2);
-    const startZ = north ? z2 - 2 : z2 - 1 - fh;
-    stairFlight(c, sx, startZ, north ? "north" : "south", w, fh);
-    // keep the landing and the turn clear at the upper level
-    const landZ = north ? startZ - fh : startZ + fh;
-    c.clear(x1 + 1, w + fh, landZ, x1 + 2, w + fh + 2, landZ);
-    c.fill(x1 + 1, w + fh - 1, landZ, x1 + 2, w + fh - 1, landZ, c.V.floor);
+    if (wide) {
+      const sx = x1 + (north ? 1 : 3);
+      const startZ = north ? z2 - 2 : z2 - 1 - fh;
+      stairFlight(c, sx, startZ, north ? "north" : "south", w, fh, undefined, 2, "east");
+      const landZ = north ? startZ - fh : startZ + fh;
+      c.clear(x1 + 1, w + fh, landZ, x1 + 4, w + fh + 2, landZ);
+      c.fill(x1 + 1, w + fh - 1, landZ, x1 + 4, w + fh - 1, landZ, c.V.floor);
+      // guard rail along the open side of the upper stairwell (the side facing the rooms)
+      for (let zz = Math.min(startZ, landZ) + 1; zz < Math.max(startZ, landZ); zz++) c.set(x1 + 5, w + fh, zz, c.B.rail);
+    } else {
+      const sx = x1 + (north ? 1 : 2);
+      const startZ = north ? z2 - 2 : z2 - 1 - fh;
+      stairFlight(c, sx, startZ, north ? "north" : "south", w, fh);
+      // keep the landing and the turn clear at the upper level
+      const landZ = north ? startZ - fh : startZ + fh;
+      c.clear(x1 + 1, w + fh, landZ, x1 + 2, w + fh + 2, landZ);
+      c.fill(x1 + 1, w + fh - 1, landZ, x1 + 2, w + fh - 1, landZ, c.V.floor);
+    }
   }
   // furnish
+  const roomStart = x1 + (wide ? 6 : 3);
   for (let k = 0; k < n; k++) {
     const w = walk + fh * k;
     const spec = o.floors[k];
     const rooms = Array.isArray(spec) ? spec : [{ u1: x1 + 3, u2: x2 - 1, type: spec }];
-    for (const r of rooms) {
+    for (let ri = 0; ri < rooms.length; ri++) {
+      const r = rooms[ri];
+      const u1 = Math.max(r.u1, roomStart);
+      // optional partition wall after this room; the 2-wide front corridor (z2-2..z2-1) stays open
+      if (o.partitions && ri < rooms.length - 1) c.fill(r.u2 + 1, w, z1 + 1, r.u2 + 1, w + fh - 2, z2 - 3, wall);
       if (!r.type || r.type === "none") continue;
-      furnishRoom(c, { x1: Math.max(r.u1, x1 + 3), z1: z1 + 1, x2: r.u2, z2: z2 - 2, walk: w, h: fh - 1, type: r.type, door: "south", doorU: Math.floor((r.u2 - r.u1) / 2), wallLights: false });
+      furnishRoom(c, { x1: u1, z1: z1 + 1, x2: r.u2, z2: z2 - 2, walk: w, h: fh - 1, type: r.type, door: "south", doorU: Math.floor((r.u2 - (wide ? u1 : r.u1)) / 2), wallLights: false });
     }
   }
   if (o.roofDeck) {
@@ -116,6 +141,22 @@ export function lampPost(c, x, z, walk, h = 3) {
   c.set(x, walk + h + 1, z, c.B.sea);
 }
 
+/** Cells of a circle of radius r around (cx, cz), 4-connected (orthogonal steps only). */
+export function ring4(cx, cz, r) {
+  const out = [];
+  let px, pz;
+  const steps = Math.max(32, Math.ceil(2 * Math.PI * r * 4));
+  for (let k = 0; k <= steps; k++) {
+    const a = (k / steps) * Math.PI * 2;
+    const x = Math.round(cx + Math.cos(a) * r), z = Math.round(cz + Math.sin(a) * r);
+    if (x === px && z === pz) continue;
+    if (px !== undefined && x !== px && z !== pz) out.push([x, pz]); // fill the diagonal corner
+    out.push([x, z]);
+    px = x; pz = z;
+  }
+  return out;
+}
+
 /** Circular stepped plinth (tiers of decreasing radius). */
 export function tieredPlinth(c, cx, cz, walk, tiers) {
   let y = walk - 1;
@@ -131,11 +172,8 @@ export function tieredPlinth(c, cx, cz, walk, tiers) {
       }
     }
     if (t.rail) {
-      const r = t.railR ?? t.r;
-      for (let k = 0; k < 64; k++) {
-        const a = (k / 64) * Math.PI * 2;
-        c.set(Math.round(cx + Math.cos(a) * r), y + 1, Math.round(cz + Math.sin(a) * r), t.railBlock ?? c.B.rail);
-      }
+      // v1.11: a 4-connected ring so every fence post joins its neighbours (no diagonal gaps)
+      for (const [rx, rz] of ring4(cx, cz, t.railR ?? t.r)) c.set(rx, y + 1, rz, t.railBlock ?? c.B.rail);
     }
   }
   return y; // top block level
@@ -153,9 +191,11 @@ export function externalStairs(c, x, z, up, walk, rise, width = 2, stairId = "mi
       c.clear(sx, walk + i + 1, sz, sx, walk + i + 3, sz);
       for (let yy = walk - 1; yy < walk + i; yy++) c.set(sx, yy, sz, c.B.tile);
     }
-    // yellow handrails
-    c.set(x + d.x * i - side.x, walk + i + 1, z + d.z * i - side.z, c.B.rail);
-    c.set(x + d.x * i + side.x * width, walk + i + 1, z + d.z * i + side.z * width, c.B.rail);
+    // yellow handrails, two high so each post overlaps the next one up and the fences join
+    for (const dy of [1, 2]) {
+      c.set(x + d.x * i - side.x, walk + i + dy, z + d.z * i - side.z, c.B.rail);
+      c.set(x + d.x * i + side.x * width, walk + i + dy, z + d.z * i + side.z * width, c.B.rail);
+    }
   }
   return { x: x + d.x * rise, z: z + d.z * rise };
 }

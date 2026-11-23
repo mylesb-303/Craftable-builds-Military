@@ -292,10 +292,11 @@ export function buildTaxiwayHoldingPoint(dimension, origin, rotation, variantId)
     // red stop bar
     c.set(x, SY, 19, x % 2 ? c.P("minecraft:redstone_block") : c.B.red);
   }
-  // sign board on the shoulder
-  c.fill(0, SY + 1, 18, 0, SY + 2, 18, c.B.blackstoneBricks);
-  c.fill(0, SY + 3, 17, 0, SY + 4, 19, c.B.yellow);
-  c.set(0, SY + 3, 18, c.B.black);
+  // v1.11: the standing sign board is gone (it clipped wingtips); a flat mandatory-instruction
+  // marking (red box with a white bar) is painted either side of the centreline instead
+  for (const side of [-1, 1]) for (let dz = 0; dz <= 2; dz++) for (let k = 2; k <= 7; k++) {
+    c.set(TC + side * k, SY, 21 + dz, dz === 1 && k >= 3 && k <= 6 ? c.B.white : c.B.red);
+  }
 }
 
 export function buildTaxiwayCornerV2(dimension, origin, rotation, variantId) {

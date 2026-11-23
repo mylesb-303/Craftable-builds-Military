@@ -145,6 +145,17 @@ const ID = {
   water: "minecraft:water"
 };
 
+let HIDDEN_LIGHT;
+/** Invisible level-15 light block (flattened id first, then the legacy state form). */
+function hiddenLight() {
+  if (HIDDEN_LIGHT) return HIDDEN_LIGHT;
+  for (const [id, states] of [["minecraft:light_block_15"], ["minecraft:light_block", { block_light_level: 15 }]]) {
+    try { HIDDEN_LIGHT = states ? BlockPermutation.resolve(id, states) : BlockPermutation.resolve(id); return HIDDEN_LIGHT; } catch { /* next */ }
+  }
+  HIDDEN_LIGHT = BlockPermutation.resolve("minecraft:air");
+  return HIDDEN_LIGHT;
+}
+
 /**
  * Creates a build context bound to one structure placement.
  */
@@ -161,6 +172,12 @@ export function kit(dimension, origin, rotation, size, variantId) {
     const w = toWorldLocation(origin, { x, y, z }, size, rotation);
     if (fast) fast(w.x, w.y, w.z, p);
     else dimension.getBlock(w)?.setPermutation(p);
+  };
+  /** typeId already placed at a local cell during compile (null = untouched / unknown). */
+  c.get = (x, y, z) => {
+    const w = toWorldLocation(origin, { x, y, z }, size, rotation);
+    if (dimension.read) return dimension.read(w.x, w.y, w.z);
+    try { return dimension.getBlock(w)?.typeId ?? null; } catch { return null; }
   };
   c.fill = (x1, y1, z1, x2, y2, z2, p) => {
     const ax = Math.min(x1, x2), bx = Math.max(x1, x2);
@@ -232,10 +249,17 @@ export function kit(dimension, origin, rotation, size, variantId) {
   c.facing = (id, face) => P(id, { "minecraft:cardinal_direction": worldDir(face, rotation) }, id);
   /** Barrel / cupboard with its lid facing `face`. */
   c.barrel = (face) => P("minecraft:barrel", { facing_direction: { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], open_bit: false }, "minecraft:barrel");
+  /** Item frame hanging on the wall behind it, facing local direction `face` (maps go in by hand). */
+  c.itemFrame = (face) => P("minecraft:frame", { facing_direction: { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], item_frame_map_bit: false, item_frame_photo_bit: false }, "minecraft:air");
   /** Upper-half slab: table tops, desks, counters and shelves. */
   c.slabTop = (id) => P(id, { "minecraft:vertical_half": "top" }, id);
   /** Lantern hanging from the block above. */
   c.hangingLantern = (soul = false) => P(soul ? "minecraft:soul_lantern" : "minecraft:lantern", { hanging: true }, "minecraft:lantern");
+  /** Aircraft-warning light (v1.11): a red redstone block with a hidden light source on top so it glows at night. */
+  c.warnLight = (x, y, z) => {
+    c.set(x, y, z, P("minecraft:redstone_block"));
+    c.set(x, y + 1, z, hiddenLight());
+  };
   c.bench = (x, y, z, facing) => c.set(x, y, z, c.stairs("minecraft:spruce_stairs", OPPOSITE[facing]));
 
   return c;
@@ -383,7 +407,7 @@ export function accessHut(c, o) {
   c.set(x, walk + h - 1, z, c.B.sea);
   if (o.mast) {
     c.fill(x + r, walk + h + 1, z - r, x + r, walk + h + 4, z - r, c.B.bars);
-    c.set(x + r, walk + h + 5, z - r, c.B.red);
+    c.warnLight(x + r, walk + h + 5, z - r);
   }
 }
 
@@ -482,7 +506,7 @@ export function parabolicDish(c, o) {
   // receiver face toward the reflector glows cyan
   c.set(Math.round(fx - n.x), Math.round(fy - n.y), Math.round(fz - n.z), c.B.sea);
   c.set(fx, fy + 1, fz, c.B.bars);
-  c.set(fx, fy + 2, fz, c.B.red);
+  c.warnLight(fx, fy + 2, fz);
   return { vertex: v, focus };
 }
 
@@ -520,8 +544,10 @@ export function radarArray(c, o) {
   // warning beacons on top corners
   const topY = center.y + Math.round(Math.ceil(hh) * cos) + 1;
   const topZ = center.z - Math.round(Math.ceil(hh) * sin);
-  c.set(center.x - Math.ceil(hw), topY, topZ, c.B.red);
-  c.set(center.x + Math.ceil(hw), topY, topZ, c.B.red);
+  if (o.beacons !== false) {
+    c.warnLight(center.x - Math.ceil(hw), topY, topZ);
+    c.warnLight(center.x + Math.ceil(hw), topY, topZ);
+  }
 }
 
 /** Square lattice mast with X bracing. Footprint (x..x+w-1, z..z+w-1). */
@@ -533,6 +559,11 @@ export function latticeMast(c, o) {
   const x2 = x + w - 1;
   const z2 = z + w - 1;
   for (const [px, pz] of [[x, z], [x2, z], [x, z2], [x2, z2]]) c.fill(px, y1, pz, px, y2, pz, post);
+  // v1.11: optional fully-barred faces (solid-looking lattice)
+  if (o.solidFaces && w > 2) for (let y = y1; y <= y2; y++) {
+    for (let i = x + 1; i < x2; i++) { c.set(i, y, z, brace); c.set(i, y, z2, brace); }
+    for (let i = z + 1; i < z2; i++) { c.set(x, y, i, brace); c.set(x2, y, i, brace); }
+  }
   const seg = Math.max(2, w - 1);
   for (let y = y1; y + seg <= y2; y += seg) {
     c.line(x, y, z, x2, y + seg, z, brace); c.line(x2, y, z, x, y + seg, z, brace);
@@ -543,7 +574,8 @@ export function latticeMast(c, o) {
   }
   if (o.beacon !== false) {
     c.fill(x + Math.floor(w / 2), y2 + 1, z + Math.floor(w / 2), x + Math.floor(w / 2), y2 + 3, z + Math.floor(w / 2), c.B.bars);
-    c.set(x + Math.floor(w / 2), y2 + 4, z + Math.floor(w / 2), c.B.red);
+    if (o.classicBeacon) c.set(x + Math.floor(w / 2), y2 + 4, z + Math.floor(w / 2), c.B.red);
+    else c.warnLight(x + Math.floor(w / 2), y2 + 4, z + Math.floor(w / 2));
   }
 }
 
