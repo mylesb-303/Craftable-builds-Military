@@ -23,11 +23,18 @@ for (const [label, unloadedX, expectScanned] of [["loaded world", Infinity, true
   for (let x = TX1 + 1; x < TX2; x++) for (let z = TZ1 + 1; z < TZ2; z++) {
     const w = toWorldLocation(o, { x, y: 2, z }, s.size, rotation);
     const id = d.getBlock(w).typeId; kinds.set(id, (kinds.get(id) ?? 0) + 1);
-    if (d.getBlock({ ...w, y: w.y + 1 }).typeId !== "minecraft:air") relief++;
+    if (d.getBlock({ ...w, y: w.y + 1 }).typeId === "minecraft:frame") relief++;
   }
   const filled = [...kinds.entries()].filter(([k]) => k !== "minecraft:air").reduce((a, [, n]) => a + n, 0);
-  const ok = terrain.scanned === expectScanned && filled === (TX2 - TX1 - 1) * (TZ2 - TZ1 - 1) && (!expectScanned || (kinds.has("minecraft:blue_concrete") && relief > 0));
-  if (!ok) bad++;
-  console.log(`${ok ? "PASS" : "FAIL"} ${label} ${rotation}: scanned ${terrain.scanned}, table cells filled ${filled}, relief cells ${relief}, surfaces ${[...kinds.keys()].map(k => k.slice(10)).join(", ")}`);
+  const ok = terrain.scanned === expectScanned && filled === (TX2 - TX1 - 1) * (TZ2 - TZ1 - 1) && (!expectScanned || kinds.has("minecraft:blue_concrete")) && relief === filled;
+  // 2-wide walkway: the ring of floor cells 1-2 blocks out from the table rim is clear at feet and head height
+  let blocked = 0;
+  for (let x = TX1 - 2; x <= TX2 + 2; x++) for (let z = TZ1 - 2; z <= TZ2 + 2; z++) {
+    if (x >= TX1 && x <= TX2 && z >= TZ1 && z <= TZ2) continue;
+    for (const dy of [2, 3]) { const w = toWorldLocation(o, { x, y: dy, z }, s.size, rotation); if (!/air|light_block/.test(d.getBlock(w).typeId)) blocked++; }
+  }
+  if (blocked) console.log(`  walkway blocked cells: ${blocked}`);
+  if (!ok || blocked) bad++;
+  console.log(`${ok ? "PASS" : "FAIL"} ${label} ${rotation}: scanned ${terrain.scanned}, table cells filled ${filled}, item frames ${relief}, surfaces ${[...kinds.keys()].map(k => k.slice(10)).join(", ")}`);
 }
 console.log(bad ? `MAPROOM FAIL (${bad})` : "MAPROOM PASS");

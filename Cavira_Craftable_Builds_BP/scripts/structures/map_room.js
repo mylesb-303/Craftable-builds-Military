@@ -12,8 +12,9 @@ import { flagpole } from "./facilities.js";
 
 const WALK = 2;
 export const MAP_ROOM_SIZE = { x: 31, y: 9, z: 25 };
-// table rim in local coordinates; the map surface is the 21 × 9 area inside it
-export const MAP_TABLE = { TX1: 4, TX2: 26, TZ1: 5, TZ2: 15 };
+// table rim in local coordinates; the map surface is the 19 × 7 area inside it
+// (v1.11: 2-wide walkways all the way round the table)
+export const MAP_TABLE = { TX1: 5, TX2: 25, TZ1: 6, TZ2: 14 };
 export const MAP_SCALE = 6; // blocks of real land per table cell
 
 // 15 × 7 map, north at the top (row 0 = far side of the table from the door).
@@ -29,7 +30,7 @@ const MAP = [
   "~ssgggbbgggffgg"
 ];
 // unit markers on the table: friendly (blue) and opposing (red) candles
-const MARKERS = [
+const MARKERS = [ // (v1.10 table markers; kept for reference)
   [7, 2, "blue"], [4, 4, "blue"], [9, 3, "blue"], [3, 1, "blue"],
   [12, 0, "red"], [13, 2, "red"], [14, 4, "red"], [12, 5, "red"]
 ];
@@ -112,40 +113,27 @@ export function buildOperationsMapRoom(dimension, origin, rotation, variantId, o
     r: P("minecraft:gray_concrete"), R: P("minecraft:light_gray_concrete"), T: P("minecraft:white_concrete"),
     B: P("minecraft:dark_oak_planks")
   };
+  // v1.11: the table top is a flat coloured map (live land where scanned, the designed theatre
+  // elsewhere) covered by up-facing item frames — drop your own maps in to tile a big map.
   for (let x = TX1; x <= TX2; x++) for (let z = TZ1; z <= TZ2; z++) {
     if (x === TX1 || x === TX2 || z === TZ1 || z === TZ2) { c.set(x, WALK, z, c.slabTop("minecraft:dark_oak_slab")); continue; }
     const u = x - TX1 - 1, v = z - TZ1 - 1;
     const live = terrain?.cells?.[v * TW + u];
-    if (live && live.kind !== "unknown") {
-      c.set(x, WALK, z, SURF[live.kind] ?? SURF.grass);
-      if (live.kind === "water") continue;
-      // relief: one step per 8 blocks of height above the room's ground level
-      const lvl = Math.max(0, Math.min(3, Math.round(live.rel / 8)));
-      const top = live.kind === "snow" ? "minecraft:snow" : live.kind === "forest" ? "minecraft:moss_block" : "minecraft:stone";
-      if (lvl === 1) c.set(x, WALK + 1, z, P(live.kind === "forest" ? "minecraft:moss_carpet" : "minecraft:stone_slab"));
-      if (lvl >= 2) c.set(x, WALK + 1, z, P(top));
-      if (lvl === 3) c.set(x, WALK + 2, z, P("minecraft:stone_slab"));
-      continue;
+    if (live && live.kind !== "unknown") c.set(x, WALK, z, SURF[live.kind] ?? SURF.grass);
+    else {
+      const ch = MAP[Math.floor((v * MAP.length) / TD)]?.[Math.floor((u * MAP[0].length) / TW)] ?? "g";
+      c.set(x, WALK, z, DESIGN[ch]);
     }
-    const ch = MAP[Math.floor((v * MAP.length) / TD)]?.[Math.floor((u * MAP[0].length) / TW)] ?? "g";
-    c.set(x, WALK, z, DESIGN[ch]);
-    if (ch === "M") c.set(x, WALK + 1, z, (x + z) % 2 ? P("minecraft:stone_slab") : P("minecraft:cobblestone_slab"));
-    if (ch === "T") c.set(x, WALK + 1, z, (x + z) % 2 ? P("minecraft:brick_slab") : P("minecraft:quartz_slab"));
-    if (ch === "R" && x % 2 === 0) c.set(x, WALK + 1, z, P("minecraft:white_carpet"));
+    c.set(x, WALK + 1, z, c.itemFrame("up"));
   }
-  if (terrain?.scanned) {
-    // "you are here": the map room's own position, marked with a red candle cluster
-    const [hx, hz] = terrain.here;
-    c.set(TX1 + 1 + hx, WALK + 1, TZ1 + 1 + hz, P("minecraft:red_candle", { candles: 3, lit: false }));
-  } else {
-    for (const [mx, mz, side] of MARKERS) {
-      const x = TX1 + 1 + Math.floor((mx * TW) / MAP[0].length), z = TZ1 + 1 + Math.floor((mz * TD) / MAP.length);
-      c.set(x, WALK + 1, z, P(`minecraft:${side}_candle`, { candles: side === "blue" ? 1 : 2, lit: false }));
-    }
+  // "you are here" and unit markers move to the rim so the frames stay clear
+  if (terrain?.scanned) c.set(TX1, WALK + 1, Math.floor((TZ1 + TZ2) / 2), P("minecraft:red_candle", { candles: 3, lit: false }));
+  else {
+    c.set(TX1, WALK + 1, TZ1 + 2, P("minecraft:blue_candle", { candles: 2, lit: false }));
+    c.set(TX2, WALK + 1, TZ1 + 2, P("minecraft:red_candle", { candles: 2, lit: false }));
   }
-  // north arrow at the far edge of the table, stools at the two ends
+  // north arrow on the far rim. No stools: the 2-wide walkways round the table stay clear.
   c.set(Math.floor((TX1 + TX2) / 2), WALK + 1, TZ1, P("minecraft:lightning_rod"));
-  for (let z = TZ1 + 1; z < TZ2; z += 3) { c.chair(TX1 - 1, WALK, z, "east"); c.chair(TX2 + 1, WALK, z, "west"); }
 
   // --- wall chart (north wall): an invented strategic chart in a frame ---------
   const WX1 = 5, WX2 = 25, WY1 = WALK + 1, WY2 = WALK + 4;

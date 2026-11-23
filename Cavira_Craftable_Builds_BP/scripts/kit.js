@@ -250,7 +250,7 @@ export function kit(dimension, origin, rotation, size, variantId) {
   /** Barrel / cupboard with its lid facing `face`. */
   c.barrel = (face) => P("minecraft:barrel", { facing_direction: { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], open_bit: false }, "minecraft:barrel");
   /** Item frame hanging on the wall behind it, facing local direction `face` (maps go in by hand). */
-  c.itemFrame = (face) => P("minecraft:frame", { facing_direction: { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], item_frame_map_bit: false, item_frame_photo_bit: false }, "minecraft:air");
+  c.itemFrame = (face) => P("minecraft:frame", { facing_direction: face === "up" ? 1 : face === "down" ? 0 : { north: 2, south: 3, west: 4, east: 5 }[worldDir(face, rotation)], item_frame_map_bit: false, item_frame_photo_bit: false }, "minecraft:air");
   /** Upper-half slab: table tops, desks, counters and shelves. */
   c.slabTop = (id) => P(id, { "minecraft:vertical_half": "top" }, id);
   /** Lantern hanging from the block above. */
