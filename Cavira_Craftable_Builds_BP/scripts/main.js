@@ -17,6 +17,7 @@ import {
 } from "./placement.js";
 import { constructStaged, restoreStaged, worldBounds } from "./construction_engine.js";
 import { sectionPlan, sectionBounds } from "./sections.js";
+import { compileHologramSource, modelHologram, startHologram } from "./hologram.js";
 import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
 import { ensureLoaded, lastLoadError, release, cleanupLeftovers } from "./chunk_loader.js";
@@ -66,9 +67,17 @@ function removePreviewBlocks(playerId, session) {
   session.previewBlocks = [];
 }
 
+function stopHologram(session) {
+  session.stopHolo?.();
+  session.stopHolo = undefined;
+  if (session.followHandle !== undefined) system.clearRun(session.followHandle);
+  session.followHandle = undefined;
+}
+
 function clearPreviewById(playerId, keepArea = false) {
   const session = ACTIVE_PREVIEWS.get(playerId);
   if (!session) return;
+  stopHologram(session);
   removePreviewBlocks(playerId, session);
   ACTIVE_PREVIEWS.delete(playerId);
   if (!keepArea) release(session.dimension, playerId);
@@ -264,23 +273,106 @@ async function askDesignator(player, attempt = 0, both = false) {
   return { designator: `${des.number}${des.side}` };
 }
 
+// --- hologram preview (v1.9.0) ---------------------------------------------
+const HOLO_MODELS = new Map(); // structure|variant|options -> model
+
+async function hologramModel(player, session) {
+  const key = `${session.structure.id}|${session.variantId}|${JSON.stringify(session.options ?? {})}`;
+  if (HOLO_MODELS.has(key)) return HOLO_MODELS.get(key);
+  const source = compileHologramSource(player.dimension, session.structure, runBuilder, session.variantId, session.options ?? {});
+  const model = await new Promise((resolve, reject) => {
+    const gen = modelHologram(source, session.structure);
+    system.runJob((function* () {
+      try {
+        let r = gen.next();
+        while (!r.done) { yield; r = gen.next(); }
+        resolve(r.value);
+      } catch (error) {
+        reject(error);
+      }
+    })());
+  });
+  if (HOLO_MODELS.size > 24) HOLO_MODELS.delete(HOLO_MODELS.keys().next().value);
+  HOLO_MODELS.set(key, model);
+  return model;
+}
+
+/** Attaches (or re-attaches) the hologram to a session. */
+async function attachHologram(player, session) {
+  stopHologram(session);
+  session.holoStopped = false;
+  try {
+    const model = await hologramModel(player, session);
+    if (ACTIVE_PREVIEWS.get(player.id) !== session) return; // preview ended while modelling
+    session.stopHolo = startHologram(player, session, model);
+    session.holoLod = model.lod;
+  } catch (error) {
+    console.warn(`[CAVIRA] Hologram failed: ${error}`);
+    tell(player, "§7(Hologram unavailable for this build — the outline preview still works.)");
+  }
+}
+
+/** Live mode: the hologram follows the player's crosshair until locked. */
+function startFollowing(player, session) {
+  session.follow = true;
+  session.rotOffset ??= 0;
+  const turn = (rotation, steps) => { let r = rotation; for (let i = 0; i < ((steps % 4) + 4) % 4; i++) r = rotateRight(r); return r; };
+  const update = () => {
+    if (!session.follow) return;
+    try {
+      if (!player.isValid) return clearPreviewById(session.playerId);
+    } catch {
+      return;
+    }
+    session.dimension = player.dimension;
+    session.rotation = turn(getCardinalRotation(player), session.rotOffset);
+    session.origin = getPlacementOrigin(player, session.structure.size, session.rotation, session.structure.foundationDepth ?? 1, session.structure.previewFloorY);
+    const top = session.origin.y + session.structure.size.y;
+    session.holoInvalid = top > (session.dimension.heightRange?.max ?? 320) || session.origin.y < (session.dimension.heightRange?.min ?? -64);
+  };
+  update();
+  session.followHandle = system.runInterval(update, 4);
+}
+
+/** Locks a following hologram where it is: loads the area, validates and draws the ground outline. */
+async function lockPreview(player, session) {
+  if (!session.follow) return true;
+  session.follow = false;
+  if (session.followHandle !== undefined) system.clearRun(session.followHandle);
+  session.followHandle = undefined;
+  if (!(await loadArea(player, session.dimension, session.origin, session.structure, session.rotation))) {
+    startFollowing(player, session);
+    return false;
+  }
+  const validation = validatePlacement(session.dimension, session.origin, session.structure.size, session.rotation, validateFromZ(session.structure));
+  if (!validation.ok) {
+    tell(player, `§cCan't lock here:§r ${validation.reason}`);
+    release(session.dimension, player.id);
+    startFollowing(player, session);
+    return false;
+  }
+  session.holoInvalid = false;
+  drawPreview(player, session);
+  return true;
+}
+
+/** Unlocks a locked preview so the hologram follows the player's view again. */
+function unlockPreview(player, session) {
+  removePreviewBlocks(player.id, session);
+  release(session.dimension, player.id);
+  startFollowing(player, session);
+}
+
 async function beginFreeLookPreview(player, categoryId, structureId, variantId, options = {}) {
   clearActivePreview(player);
   const structure = getStructure(categoryId, structureId);
   const variant = getVariant(variantId);
   if (!structure) return;
-  const rotation = getCardinalRotation(player);
-  const origin = getPlacementOrigin(player, structure.size, rotation, structure.foundationDepth ?? 1, structure.previewFloorY);
-  if (!(await loadArea(player, player.dimension, origin, structure, rotation))) return;
-  const validation = validatePlacement(player.dimension, origin, structure.size, rotation, validateFromZ(structure));
-  if (!validation.ok) {
-    tell(player, `§cCannot preview:§r ${validation.reason}`);
-    return;
-  }
-  const session = { categoryId, structureId, variantId, structure, variant, origin, rotation, dimension: player.dimension, previewBlocks: [], options };
-  drawPreview(player, session);
+  const session = { playerId: player.id, categoryId, structureId, variantId, structure, variant, origin: undefined, rotation: getCardinalRotation(player), dimension: player.dimension, previewBlocks: [], options, rotOffset: 0 };
   ACTIVE_PREVIEWS.set(player.id, session);
-  tell(player, `§aPreview active: ${structure.name} (${variant.name}). §rFly or walk around freely to inspect it. Use the Construction Tablet again for placement controls.`);
+  startFollowing(player, session);
+  tell(player, `§bHologram: ${structure.name} (${variant.name}).§r It follows where you look — walk, fly and turn to line it up. Open the Construction Tablet to §elock§r it, rotate it or build.`);
+  await attachHologram(player, session);
 }
 
 function snapTarget(player, session, connectorName) {
@@ -348,9 +440,10 @@ async function showTrialMenu(player) {
   const removed = await performUndo(player, record);
   if (removed && response.selection === 2) {
     // back into placement preview at the same spot with the same settings
-    const again = { ...session, previewBlocks: [] };
+    const again = { ...session, previewBlocks: [], follow: false, followHandle: undefined, stopHolo: undefined, holoStopped: false };
     ACTIVE_PREVIEWS.set(player.id, again);
     if (await loadArea(player, again.dimension, again.origin, again.structure, again.rotation)) drawPreview(player, again);
+    attachHologram(player, again);
     tell(player, "§bPreview restored at the same spot — reposition, rotate or snap it, then construct.");
   }
 }
@@ -362,34 +455,60 @@ async function showPreviewControls(player) {
   const canSnap = !!(session.structure.snap && last);
   const canBranch = !!(canSnap && last.structure.snap?.branch);
   const designator = session.options?.designator ? `\nRunway: ${session.options.designator}` : "";
+  const following = Boolean(session.follow);
+  const lod = session.holoLod > 1 ? ` (shown at 1:${session.holoLod} detail)` : "";
+  const status = following
+    ? `§bHologram is following your view${lod}.§r Line it up, then lock it. Red means it can't go there.`
+    : `§aLocked in place.§r The hologram shows the finished build${lod}; green ground marks show the footprint, yellow the entrance, cyan the floor height.`;
   const form = new ActionFormData()
     .title(`Preview: ${session.structure.name}`)
-    .body(`Finish: ${session.variant.name}${designator}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}\nFoundation depth: ${session.structure.foundationDepth ?? 1} blocks\n\nGreen marks the outer volume. Cyan cross-hatching marks the exact finished walkable floor/deck height. Yellow marks the entrance; orange marks the below-ground foundation.`);
+    .body(`${status}\n\nFinish: ${session.variant.name}${designator}\nFacing: ${session.rotation.toUpperCase()}\nSize: ${session.structure.size.x}×${session.structure.size.z}×${session.structure.size.y}`);
   const actions = [];
   const add = (label, fn) => { form.button(label); actions.push(fn); };
-  add("§aConstruct Here", () => constructPreview(player, session));
-  add("§6Try It Full Size\n§7Build it for real, then keep or remove", () => constructPreview(player, session, true));
-  if (canSnap) add(`§dSnap to End of ${last.structure.name}`, () => applySnap(player, session, "out"));
-  if (canBranch) add(`§dSnap to Taxiway Exit of ${last.structure.name}`, () => applySnap(player, session, "branch"));
-  add("§bReposition In Front Of Me", async () => {
-    await repositionPreview(player, session);
-    tell(player, "§aPreview repositioned in front of you. Inspect it again, then use the tablet when ready.");
-  });
+  const locked = async () => (following ? lockPreview(player, session) : true);
+  if (following) {
+    add("§a📍 Lock Here\n§7Check the ground and hold this spot", async () => {
+      if (await lockPreview(player, session)) tell(player, "§aLocked. Walk around it, then use the tablet to construct, rotate or move it.");
+    });
+  }
+  add("§aConstruct Here", async () => { if (await locked()) await constructPreview(player, session); });
+  add("§6Try It Full Size\n§7Build it for real, then keep or remove", async () => { if (await locked()) await constructPreview(player, session, true); });
+  const snapAction = (connector) => async () => {
+    if (!snapTarget(player, session, connector)) return tell(player, "§eNothing to snap to — build a runway, taxiway or apron piece first.");
+    session.follow = false;
+    stopFollowOnly(session);
+    await applySnap(player, session, connector);
+  };
+  if (canSnap) add(`§dSnap to End of ${last.structure.name}`, snapAction("out"));
+  if (canBranch) add(`§dSnap to Taxiway Exit of ${last.structure.name}`, snapAction("branch"));
+  if (!following) {
+    add("§bMove With My View\n§7Unlock and line it up again", () => {
+      unlockPreview(player, session);
+      tell(player, "§bUnlocked — the hologram follows your view again.");
+    });
+  }
   add("§e↶ Rotate Left", async () => {
+    if (following) { session.rotOffset = (session.rotOffset + 3) % 4; return; }
     await rotatePreview(player, session, "left");
-    tell(player, "§aPreview rotated left. Inspect it again, then use the tablet when ready.");
+    tell(player, "§aPreview rotated left.");
   });
   add("§e↷ Rotate Right", async () => {
+    if (following) { session.rotOffset = (session.rotOffset + 1) % 4; return; }
     await rotatePreview(player, session, "right");
-    tell(player, "§aPreview rotated right. Inspect it again, then use the tablet when ready.");
+    tell(player, "§aPreview rotated right.");
   });
   add("§cCancel Preview", () => {
     clearActivePreview(player);
-    tell(player, "§7Placement preview cancelled and the original blocks restored.");
+    tell(player, "§7Preview cancelled.");
   });
   const response = await form.show(player);
   if (response.canceled || response.selection === undefined) return;
   return actions[response.selection]?.();
+}
+
+function stopFollowOnly(session) {
+  if (session.followHandle !== undefined) system.clearRun(session.followHandle);
+  session.followHandle = undefined;
 }
 
 /**
