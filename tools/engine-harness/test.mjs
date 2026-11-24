@@ -7,7 +7,7 @@ import { registerPreview, unregisterPreview } from "./scripts/preview_guard.js";
 
 const eq = (a,b) => { if (a.size!==b.size) return false; for (const [k,v] of a) if (b.get(k)!==v) return false; return true; };
 const everything = Object.values(STRUCTURES).flat();
-const all = everything.filter(s => !process.env.ONLY || s.id.startsWith(process.env.ONLY));
+const all = everything.filter(s => !process.env.ONLY || process.env.ONLY.split(",").some(p => s.id.startsWith(p)));
 let fail = 0, maxWrites = 0, maxTicks = 0, maxName="";
 const origin = { x: 100, y: 61, z: -40 };
 for (const s of all) {

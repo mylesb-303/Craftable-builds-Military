@@ -43,6 +43,7 @@ jobs:
           ! grep -q "FAIL" result.txt
           node dircheck.mjs | grep -q PASS
           node snapcheck.mjs | grep -q "SNAP PASS"
+          node snapcheck2.mjs | grep -q "SNAP2 PASS"
           node chunkcheck.mjs
           node sectioncheck.mjs | tee sections.txt
           grep -q "SECTIONS PASS" sections.txt
@@ -73,7 +74,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile, ZIP_DEFLATED
-          output = Path("dist/Cavira_Craftable_Builds_1.11.1_Map_Table_Frames.mcaddon")
+          output = Path("dist/Cavira_Craftable_Builds_1.12.0_Airfield_Expansion.mcaddon")
           roots = [Path("Cavira_Craftable_Builds_BP"), Path("Cavira_Craftable_Builds_RP")]
           with ZipFile(output, "w", ZIP_DEFLATED) as archive:
               for root in roots:
@@ -86,5 +87,5 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
-          name: Cavira-Craftable-Builds-1.11.1-Map-Table-Frames
-          path: dist/Cavira_Craftable_Builds_1.11.1_Map_Table_Frames.mcaddon
+          name: Cavira-Craftable-Builds-1.12.0-Airfield-Expansion
+          path: dist/Cavira_Craftable_Builds_1.12.0_Airfield_Expansion.mcaddon

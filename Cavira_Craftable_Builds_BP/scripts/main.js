@@ -21,6 +21,7 @@ import { compileHologramSource, modelHologram, startHologram } from "./hologram.
 import { installRunwayLights, registerRunwayLights } from "./runway_lights.js";
 import { scanTerrain } from "./terrain_scan.js";
 import { buildApron, buildHeliportQuad } from "./structures/aprons.js";
+import { buildTaxiwayCornerLeft, buildTaxiwayStraightLong, buildTaxiwayTJunction, buildRunwayArrestingGear, buildRunwayOverrun, buildIlsLocaliser, buildIlsGlideslope, buildVorBeacon, buildBombLoadingRevetments, buildB52TailDock, buildMq9DroneShelter } from "./structures/airfield_extra.js";
 import { buildOperationsMapRoom } from "./structures/map_room.js";
 import { accessPass, lightPass, fixturePass } from "./postprocess.js";
 import { installPreviewGuard, registerPreview, unregisterPreview } from "./preview_guard.js";
@@ -458,7 +459,7 @@ async function showPreviewControls(player) {
   const session = ACTIVE_PREVIEWS.get(player.id);
   if (!session) return showMainMenu(player);
   const last = LAST_PIECE.get(player.id);
-  const canSnap = !!(session.structure.snap && last);
+  const canSnap = !!(session.structure.snap && last?.structure.snap?.out);
   const canBranch = !!(canSnap && last.structure.snap?.branch);
   const snapLabels = last?.structure.snap?.labels ?? {};
   const designator = session.options?.designator ? `\nRunway: ${session.options.designator}` : "";
@@ -824,6 +825,17 @@ export function runBuilder(structureId, dimension, origin, rotation, variantId, 
     case "taxiway_corner":
       buildTaxiwayCornerV2(dimension, origin, rotation, variantId);
       break;
+    case "taxiway_corner_left": buildTaxiwayCornerLeft(dimension, origin, rotation, variantId); break;
+    case "taxiway_straight_long": buildTaxiwayStraightLong(dimension, origin, rotation, variantId); break;
+    case "taxiway_t_junction": buildTaxiwayTJunction(dimension, origin, rotation, variantId); break;
+    case "runway_arresting_gear": buildRunwayArrestingGear(dimension, origin, rotation, variantId); break;
+    case "runway_overrun": buildRunwayOverrun(dimension, origin, rotation, variantId); break;
+    case "ils_localiser": buildIlsLocaliser(dimension, origin, rotation, variantId); break;
+    case "ils_glideslope": buildIlsGlideslope(dimension, origin, rotation, variantId); break;
+    case "vor_beacon": buildVorBeacon(dimension, origin, rotation, variantId); break;
+    case "bomb_loading_revetments": buildBombLoadingRevetments(dimension, origin, rotation, variantId); break;
+    case "b52_tail_dock": buildB52TailDock(dimension, origin, rotation, variantId); break;
+    case "mq9_drone_shelter": buildMq9DroneShelter(dimension, origin, rotation, variantId); break;
     case "aircraft_apron":
     case "aircraft_apron_extension":
     case "apron_medium":

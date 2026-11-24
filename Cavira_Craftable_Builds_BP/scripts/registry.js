@@ -3,6 +3,7 @@ import { AIRFIELD_SIZES, AIRFIELD_SNAP } from "./structures/airfield.js";
 import { FULL_RUNWAY_SIZES, FULL_RUNWAY_SNAP } from "./structures/full_runways.js";
 import { CORE_SIZES } from "./structures/core_v2.js";
 import { MAP_ROOM_SIZE } from "./structures/map_room.js";
+import { EXTRA_SIZES, EXTRA_SNAP, EXTRA_ENVELOPES } from "./structures/airfield_extra.js";
 import { APRON_SIZES, APRON_SNAP, HELIPORT_QUAD_SIZE } from "./structures/aprons.js";
 import { ARMY_SIZES, HEAVY_HANGAR_ENVELOPE, PERIMETER_SNAP } from "./structures/army_v2.js";
 import { AIR_SIZES, AIR_ENVELOPES } from "./structures/air_v2.js";
@@ -71,6 +72,46 @@ export const STRUCTURES = {
       id: "taxiway_corner", name: "Taxiway Curve (90°)",
       description: "Smooth 90° taxiway curve with lit yellow centreline. Snaps onto straights; place it facing the other way for a left turn.",
       size: AIRFIELD_SIZES.taxiway_corner, foundationDepth: 2, snap: AIRFIELD_SNAP.taxiway_corner
+    },
+    {
+      id: "taxiway_corner_left", name: "Taxiway 90° Left Turn",
+      description: "Mirror of the 90° corner: a smooth left-hand turn with lit centreline. Snaps onto a taxiway.",
+      size: EXTRA_SIZES.taxiway_corner_left, foundationDepth: 2, snap: EXTRA_SNAP.taxiway_corner_left
+    },
+    {
+      id: "taxiway_straight_long", name: "Taxiway Straight (Long ×3)",
+      description: "96-block taxiway (three standard pieces in one) with lit centreline, for laying long taxiways quickly. Snaps end to end.",
+      size: EXTRA_SIZES.taxiway_straight_long, foundationDepth: 2, snap: EXTRA_SNAP.taxiway_straight_long
+    },
+    {
+      id: "taxiway_t_junction", name: "Taxiway T-Junction",
+      description: "T-junction: enter from the stem and leave left or right on smooth curved lines, with rounded fillets. Snap a Right Exit or Left Exit to continue.",
+      size: EXTRA_SIZES.taxiway_t_junction, foundationDepth: 2, snap: EXTRA_SNAP.taxiway_t_junction
+    },
+    {
+      id: "runway_arresting_gear", name: "Runway Arresting Gear",
+      description: "Runway section with a flush arresting cable across the full width, yellow arresting-gear disc markings and flush sheave pits. Snaps between runway sections.",
+      size: EXTRA_SIZES.runway_arresting_gear, foundationDepth: 2, snap: EXTRA_SNAP.runway_arresting_gear
+    },
+    {
+      id: "runway_overrun", name: "Runway End Overrun",
+      description: "Ends a runway: red runway-end light bar and a paved overrun with yellow chevrons and red edge lights. Snaps onto the far end of a runway section.",
+      size: EXTRA_SIZES.runway_overrun, foundationDepth: 2, snap: EXTRA_SNAP.runway_overrun
+    },
+    {
+      id: "ils_localiser", name: "ILS Localiser Array",
+      description: "Landing aid: 14-element localiser antenna array with equipment shelter. Place on the extended centreline beyond the far end of the runway.",
+      size: EXTRA_SIZES.ils_localiser, foundationDepth: 2
+    },
+    {
+      id: "ils_glideslope", name: "ILS Glideslope Mast",
+      description: "Landing aid: lattice glideslope mast with three antennas, warning light and equipment shelter. Place beside the touchdown zone, clear of the wingtips.",
+      size: EXTRA_SIZES.ils_glideslope, foundationDepth: 2
+    },
+    {
+      id: "vor_beacon", name: "VOR/DME Beacon",
+      description: "Navigation beacon: white cone house on a raised counterpoise disc with its antenna ring, DME aerial, warning light and equipment room underneath.",
+      size: EXTRA_SIZES.vor_beacon, foundationDepth: 2
     },
     {
       id: "aircraft_apron", name: "Fighter Parking Apron",
@@ -207,6 +248,21 @@ export const STRUCTURES = {
       id: "helicopter_hangar", name: "Helicopter Hangar",
       description: "Two-Chinook hangar: 55-wide by 10-tall clear door and 44 m of clear depth (Chinook, Apache, Osprey, Ghost Hawk), rear workshop/avionics/crew rooms and a mezzanine store.",
       size: AIR_SIZES.helicopter_hangar, foundationDepth: 2, envelope: AIR_ENVELOPES.helicopter_hangar
+    },
+    {
+      id: "bomb_loading_revetments", name: "Bomb-Loading Revetments",
+      description: "Two U-shaped blast-wall bays (29 wide, earth-filled walls) for arming aircraft: weapons staging areas, munitions trailers, wall floodlights, solid lit lead-ins and flat floors.",
+      size: EXTRA_SIZES.bomb_loading_revetments, foundationDepth: 2, envelope: EXTRA_ENVELOPES.bomb_loading_revetments
+    },
+    {
+      id: "b52_tail_dock", name: "B-52 Tail Maintenance Dock",
+      description: "Tail-first maintenance dock for the B-52: 23-wide x 15-tall tail door (wings stay outside), work platforms either side of the fin with 2-wide stairs, overhead gantry, rear workshop and stores.",
+      size: EXTRA_SIZES.b52_tail_dock, foundationDepth: 2, envelope: EXTRA_ENVELOPES.b52_tail_dock
+    },
+    {
+      id: "mq9_drone_shelter", name: "MQ-9 Drone Shelter & Control Station",
+      description: "Open-fronted shelter sized for the MQ-9 Reaper plus a ground control station: pilot and sensor consoles facing a wall of screens, satellite dish, antenna mast and generator.",
+      size: EXTRA_SIZES.mq9_drone_shelter, foundationDepth: 2, envelope: EXTRA_ENVELOPES.mq9_drone_shelter
     },
     {
       id: "airfield_operations_building", name: "Airfield Operations Building",

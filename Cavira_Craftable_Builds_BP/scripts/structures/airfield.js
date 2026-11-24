@@ -72,7 +72,7 @@ function ctx(id, dimension, origin, rotation, variantId) {
 }
 
 /** Runway cross-section for rows z1..z2. */
-function runwayRows(c, z1, z2, opts = {}) {
+export function runwayRows(c, z1, z2, opts = {}) {
   for (let z = z1; z <= z2; z++) {
     for (let x = 0; x < RUNWAY_W; x++) {
       c.set(x, SY - 1, z, c.B.concrete);
@@ -92,7 +92,7 @@ function runwayRows(c, z1, z2, opts = {}) {
   }
 }
 
-function centreline(c, z1, z2) {
+export function centreline(c, z1, z2) {
   for (let z = z1; z <= z2; z++) {
     const m = ((z % 16) + 16) % 16;
     if (m < 9) c.set(RC, SY, z, c.B.white);
@@ -260,7 +260,7 @@ export function buildRunwayTaxiwayJunction(dimension, origin, rotation, variantI
 // Taxiway modules
 // ---------------------------------------------------------------------------
 
-function taxiCell(c, x, z, u) {
+export function taxiCell(c, x, z, u) {
   let b;
   if (u === 0 || u === TAXI_W - 1) b = shoulder(c, x, z);
   else if (u === 1 || u === TAXI_W - 2) b = c.B.white;
